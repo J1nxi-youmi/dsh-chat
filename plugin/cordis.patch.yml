@@ -1,0 +1,29 @@
+# 聊天 App 的后端（二合一）：网页聊天端 + DSH 会话桥。
+#
+# 不再需要单独装 dsh-plugin-starlit-bridge：
+#   baseUrl 留空 → 插件内部起一座桥（127.0.0.1:8790），直接跑这条 DSH 里的会话；
+#   baseUrl 填了 → 照旧转发给任意 OpenAI 兼容后端。
+#
+# 想写进「已有会话」而不是新建：把会话 id 填到 sessionId（sessionKey 保持 fixed）。
+#
+# 跨网：填下面三项（中转地址 / 房间 / 密钥），插件会自己连上去；
+# App 端选「中转房间」，填同样的三项就能在任何网络里连过来。
+- insert:
+    - id: chat
+      name: 'dsh-plugin-chat'
+      config:
+        host: '0.0.0.0'
+        port: 8792
+        token: 'chatdemo123'
+        # 留空 = 用插件自带的桥（推荐）；填了就走外部 OpenAI 兼容后端
+        baseUrl: ''
+        apiKey: ''
+        # fixed + sessionId：所有聊天都写进这一条会话；sessionId 留空则自动建一条并复用
+        sessionKey: fixed
+        sessionId: ''
+        mode: chat
+        persona: dsh
+        tools: false
+        relayUrl: ''
+        relayRoom: ''
+        relayKey: ''

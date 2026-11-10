@@ -1,0 +1,30 @@
+{
+  "name": "dsh-plugin-chat",
+  "version": "0.2.0",
+  "private": true,
+  "description": "聊天 App 的后端：网页聊天端 + HTTP API，自带跑 DSH 会话的 OpenAI 兼容桥（二合一，不用再装 starlit-bridge）。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "public",
+    "server.mjs",
+    "cordis.patch.yml",
+    "locale"
+  ],
+  "scripts": {
+    "test": "node test/reliability.mjs",
+    "test:e2e": "node test/e2e/web-e2e.mjs"
+  },
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

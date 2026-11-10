@@ -1,0 +1,69 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1115" />
+  <title>聊天</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="login" class="login hidden">
+    <div class="login-card">
+      <h1>聊天</h1>
+      <p>填写要连的那台 DSH 的聊天服务</p>
+      <input id="loginServer" type="url" placeholder="服务器地址，如 http://192.168.1.101:8792" autocomplete="url" />
+      <input id="loginToken" type="password" placeholder="令牌" autocomplete="current-password" />
+      <button id="loginBtn">进入</button>
+      <p id="loginError" class="error"></p>
+    </div>
+  </div>
+
+  <div id="app" class="app">
+    <aside id="drawer" class="drawer">
+      <div class="drawer-head">
+        <strong>对话</strong>
+        <span class="drawer-actions">
+          <button id="clearChats" class="ghost" title="清空全部对话">清空</button>
+          <button id="newChat" class="ghost" title="新对话">＋</button>
+        </span>
+      </div>
+      <div id="conversationList" class="conversation-list"></div>
+      <div class="drawer-foot">
+        <span id="status" class="status">…</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button id="toggleDrawer" class="ghost" aria-label="对话列表">☰</button>
+        <div class="title" id="title">聊天</div>
+      </header>
+
+      <div id="messages" class="messages"></div>
+
+      <div id="pending" class="pending hidden">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span> 正在输入…
+      </div>
+
+      <div id="attachmentBar" class="attachment-bar hidden"></div>
+
+      <form id="composer" class="composer">
+        <button type="button" id="attach" class="ghost" title="图片 / 文件">📎</button>
+        <button type="button" id="mic" class="ghost" title="按住说话">🎙️</button>
+        <textarea id="input" rows="1" placeholder="说点什么…" enterkeyhint="send"></textarea>
+        <button type="submit" id="send" class="send" title="发送">↑</button>
+      </form>
+      <input id="filePicker" type="file" multiple hidden />
+    </main>
+  </div>
+
+  <div id="recording" class="recording hidden">
+    <span class="rec-dot"></span><span id="recTime">0.0s</span><span class="rec-hint">再点一下麦克风发送</span>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

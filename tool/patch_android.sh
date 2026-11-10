@@ -1,8 +1,11 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # 在 CI 里给 flutter 生成的 Android 工程补几样东西：
 # 1) 录音 / 网络权限
 # 2) 允许明文 HTTP（聊天服务常是 http://192.168.x.x:8792）
-# 3) compileSdk 提到 36（file_picker 等插件要求的）
+# 3) 主工程 compileSdk 提到 36
+#
+# 注意：插件模块（file_picker）自己的 compileSdk 也要够新，这只改主工程不够，
+# 所以正解是把 file_picker 升到 13.x。见 PROGRESS.md。
 set -euo pipefail
 
 MANIFEST=android/app/src/main/AndroidManifest.xml
@@ -23,46 +26,10 @@ fi
 GRADLE=android/app/build.gradle.kts
 [ -f "$GRADLE" ] || GRADLE=android/app/build.gradle
 
-# Kotlin DSL: compileSdk = flutter.compileSdkVersion
 perl -0pi -e 's/compileSdk\s*=\s*flutter\.compileSdkVersion/compileSdk = 36/' "$GRADLE"
-# Groovy DSL: compileSdkVersion flutter.compileSdkVersion
 perl -0pi -e 's/compileSdkVersion\s+flutter\.compileSdkVersion/compileSdkVersion 36/' "$GRADLE"
 
-# 插件模块（file_picker 等）自带 compileSdk 34，会在 checkReleaseAarMetadata 里失败。
-# 在根工程里把所有子工程的 compileSdk 统一抬到 36。
-ROOT_GRADLE=android/build.gradle.kts
-if [ -f "$ROOT_GRADLE" ]; then
-  if ! grep -q 'ci-compile-sdk-patch' "$ROOT_GRADLE"; then
-    cat >> "$ROOT_GRADLE" <<'KTS'
-
-// ci-compile-sdk-patch: 插件模块也抬到 36
-subprojects {
-    afterEvaluate {
-        val androidExtension = extensions.findByName("android")
-        if (androidExtension is com.android.build.gradle.BaseExtension) {
-            androidExtension.compileSdkVersion(36)
-        }
-    }
-}
-KTS
-  fi
-else
-  ROOT_GRADLE=android/build.gradle
-  if [ -f "$ROOT_GRADLE" ] && ! grep -q 'ci-compile-sdk-patch' "$ROOT_GRADLE"; then
-    cat >> "$ROOT_GRADLE" <<'GRV'
-
-// ci-compile-sdk-patch: 插件模块也抬到 36
-subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty('android')) {
-            project.android.compileSdkVersion 36
-        }
-    }
-}
-GRV
-  fi
-fi
-
+echo "--- AndroidManifest 关键行 ---"
+grep -E 'RECORD_AUDIO|INTERNET|usesCleartextTraffic' "$MANIFEST"
 echo "--- compileSdk ---"
 grep -nE 'compileSdk' "$GRADLE" || true
-grep -nE 'subprojects' "$ROOT_GRADLE" || true

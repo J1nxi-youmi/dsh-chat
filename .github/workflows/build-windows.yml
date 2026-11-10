@@ -27,6 +27,11 @@ jobs:
       - name: Drop template test
         run: Remove-Item -Force test/widget_test.dart -ErrorAction SilentlyContinue
 
+      # just_audio_windows 的 C++/WinRT 还在用 <experimental/coroutine>，
+      # 新版 MSVC 直接报 STL1011，这里加 _SILENCE_... 开关。
+      - name: Patch windows CMakeLists
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File tool/patch_windows.ps1
+
       - run: flutter pub get
 
       # 把构建输出落到 windows.log 并推到 ci-logs-win 分支，

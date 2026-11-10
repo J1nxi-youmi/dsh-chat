@@ -34,18 +34,28 @@ class _DesktopHomeState extends State<DesktopHome> {
   bool _loading = true;
   String? _error;
   bool _connected = false;
+  StreamSubscription<Map<String, dynamic>>? _events;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _connected = widget.api.connected.value;
     widget.api.connected.addListener(_onConnection);
+    // 收到任何消息都让列表（预览/时间）跟着更新，抖一下再刷。
+    _events = widget.api.events.listen((event) {
+      if (event['type'] != 'message') return;
+      _refreshTimer?.cancel();
+      _refreshTimer = Timer(const Duration(milliseconds: 600), _load);
+    });
     _load();
   }
 
   @override
   void dispose() {
     widget.api.connected.removeListener(_onConnection);
+    _events?.cancel();
+    _refreshTimer?.cancel();
     _search.dispose();
     super.dispose();
   }

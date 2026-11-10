@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api.dart';
 import '../models.dart';
@@ -34,6 +36,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   List<Message> _messages = const [];
   final List<Attachment> _pending = [];
+  /// 还没被 ack 的消息；断线/重启后按顺序重发。
+  final List<Outgoing> _outbox = [];
+  int _lastSeq = 0;
+  bool _connected = true;
+  bool _flushing = false;
   StreamSubscription<Map<String, dynamic>>? _events;
   bool _sending = false;
   bool _recording = false;
@@ -45,12 +52,16 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _connected = widget.api.connected.value;
+    widget.api.connected.addListener(_onConnection);
+    _loadOutbox();
     _load();
     _events = widget.api.events.listen(_onEvent);
   }
 
   @override
   void dispose() {
+    widget.api.connected.removeListener(_onConnection);
     _events?.cancel();
     _ticker?.cancel();
     _recorder.dispose();
@@ -59,19 +70,55 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  void _onConnection() {
+    if (!mounted) return;
+    setState(() => _connected = widget.api.connected.value);
+    if (_connected) {
+      // 断线期间可能错过了几条，也可能有没发出去的。
+      unawaited(_syncSince());
+      unawaited(_flushOutbox());
+    }
+  }
+
   Future<void> _load() async {
     try {
       final conversation = await widget.api.conversation(widget.conversationId);
       if (!mounted) return;
       setState(() {
         _messages = conversation.messages;
+        _lastSeq = _messages.fold(0, (max, item) => item.seq > max ? item.seq : max);
         _error = null;
       });
       _jumpToBottom();
+      unawaited(_syncSince());
+      unawaited(_flushOutbox());
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString());
     }
+  }
+
+  /// 从服务端补 seq 大于本地游标的消息。
+  Future<void> _syncSince() async {
+    try {
+      final fresh = await widget.api.messagesSince(widget.conversationId, _lastSeq);
+      if (!mounted || fresh.isEmpty) return;
+      setState(() {
+        for (final message in fresh) {
+          _merge(message);
+        }
+      });
+      _jumpToBottom();
+    } catch (_) {
+      /* 下次重连再补 */
+    }
+  }
+
+  /// 合并一条消息（去重、按 seq 保序、推进游标）。
+  void _merge(Message message) {
+    if (_messages.any((item) => item.id == message.id)) return;
+    _messages = [..._messages, message]..sort((left, right) => left.seq.compareTo(right.seq));
+    if (message.seq > _lastSeq) _lastSeq = message.seq;
   }
 
   void _onEvent(Map<String, dynamic> event) {
@@ -80,8 +127,12 @@ class _ChatScreenState extends State<ChatScreen> {
     final raw = event['message'];
     if (raw is! Map<String, dynamic>) return;
     final message = Message.fromJson(raw);
-    if (_messages.any((item) => item.id == message.id)) return;
-    setState(() => _messages = [..._messages, message]);
+    // 事件中间漏了（比如断线重连）就整段补一次，别只追这一条。
+    if (message.seq > _lastSeq + 1) {
+      unawaited(_syncSince());
+      return;
+    }
+    setState(() => _merge(message));
     _jumpToBottom();
   }
 
@@ -181,28 +232,117 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _send() async {
-    if (_sending) return;
     final text = _input.text.trim();
     if (text.isEmpty && _pending.isEmpty) return;
+    final item = Outgoing(
+      clientMessageId: _newClientId(),
+      text: text,
+      attachments: _pending.toList(),
+      at: DateTime.now(),
+    );
+    _input.clear();
+    setState(() {
+      _pending.clear();
+      _outbox.add(item);
+    });
+    await _saveOutbox();
+    await _deliver(item);
+    if (mounted) setState(() {});
+  }
+
+  // ---------------------------------------------------------------- 未 ack 队列
+
+  String get _outboxKey => 'chat.outbox.${widget.conversationId}';
+
+  String _newClientId() {
+    final now = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
+    final random = DateTime.now().hashCode.toRadixString(16).padLeft(8, '0');
+    return '$now-$random';
+  }
+
+  Future<void> _loadOutbox() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_outboxKey);
+    if (raw == null) return;
+    try {
+      final list = (jsonDecode(raw) as List).whereType<Map<String, dynamic>>();
+      if (!mounted) return;
+      setState(() {
+        _outbox
+          ..clear()
+          ..addAll(list.map(Outgoing.fromJson));
+      });
+    } catch (_) {
+      /* 坏数据就当没有 */
+    }
+  }
+
+  Future<void> _saveOutbox() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_outbox.isEmpty) {
+      await prefs.remove(_outboxKey);
+      return;
+    }
+    await prefs.setString(
+      _outboxKey,
+      jsonEncode(_outbox.map((item) => item.toJson()).toList()),
+    );
+  }
+
+  /// 发一条队列里的消息：成功就移出队列并并入会话，失败标红等重试。
+  Future<bool> _deliver(Outgoing item) async {
     setState(() => _sending = true);
     try {
       final result = await widget.api.sendMessage(
         widget.conversationId,
-        text: text,
-        attachmentIds: _pending.map((item) => item.id).toList(),
+        text: item.text,
+        attachmentIds: item.attachments.map((attachment) => attachment.id).toList(),
+        clientMessageId: item.clientMessageId,
       );
-      if (!mounted) return;
+      _outbox.removeWhere((entry) => entry.clientMessageId == item.clientMessageId);
+      await _saveOutbox();
+      if (!mounted) return true;
       setState(() {
-        _input.clear();
-        _pending.clear();
-        _messages = [..._messages, result.user, ...result.replies];
+        _merge(result.user);
+        for (final reply in result.replies) {
+          _merge(reply);
+        }
       });
       _jumpToBottom();
+      return true;
     } catch (error) {
+      item.status = 'failed';
+      await _saveOutbox();
+      if (mounted) setState(() {});
       _toast(error.toString());
+      return false;
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  /// 按顺序重发队列；失败就停，等下次重连。
+  Future<void> _flushOutbox() async {
+    if (_flushing || _outbox.isEmpty) return;
+    _flushing = true;
+    try {
+      for (final item in [..._outbox]) {
+        if (!_outbox.any((entry) => entry.clientMessageId == item.clientMessageId)) continue;
+        item.status = 'sending';
+        if (mounted) setState(() {});
+        final ok = await _deliver(item);
+        if (!ok) break;
+      }
+    } finally {
+      _flushing = false;
+    }
+  }
+
+  Future<void> _retry(Outgoing item) async {
+    item.status = 'sending';
+    if (mounted) setState(() {});
+    await _deliver(item);
+    if (mounted) setState(() {});
   }
 
   void _toast(String message) {
@@ -242,11 +382,32 @@ class _ChatScreenState extends State<ChatScreen> {
       body: StarryBackground(
         child: Column(
           children: [
+            if (!_connected) _connectionBanner(),
             Expanded(child: _messageList()),
             if (_pending.isNotEmpty) _pendingBar(),
             _composer(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _connectionBanner() {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF3A2E12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE8B93E)),
+          ),
+          SizedBox(width: 8),
+          Text('连接中断，正在重连…', style: TextStyle(fontSize: 12, color: Color(0xFFE8B93E))),
+        ],
       ),
     );
   }
@@ -267,13 +428,25 @@ class _ChatScreenState extends State<ChatScreen> {
     return ListView.builder(
       controller: _scroll,
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
-      itemCount: _messages.length + (_sending ? 1 : 0),
+      itemCount: _messages.length + _outbox.length + (_sending ? 1 : 0),
       itemBuilder: (context, index) {
-        if (index >= _messages.length) return const TypingRow();
-        return MessageBubble(
-          message: _messages[index],
-          mediaUrl: widget.api.mediaUrl,
-        );
+        if (index < _messages.length) {
+          return MessageBubble(
+            message: _messages[index],
+            mediaUrl: widget.api.mediaUrl,
+          );
+        }
+        final outboxIndex = index - _messages.length;
+        if (outboxIndex < _outbox.length) {
+          final item = _outbox[outboxIndex];
+          return MessageBubble(
+            message: item.asMessage(),
+            mediaUrl: widget.api.mediaUrl,
+            status: item.status,
+            onRetry: item.status == 'failed' ? () => _retry(item) : null,
+          );
+        }
+        return const TypingRow();
       },
     );
   }

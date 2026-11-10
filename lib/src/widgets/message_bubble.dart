@@ -11,10 +11,22 @@ final _linkPattern = RegExp('https?://[^\\s<>\'"]+');
 
 /// 一条消息：文字（链接可点）、图片、语音、文件。
 class MessageBubble extends StatelessWidget {
-  const MessageBubble({super.key, required this.message, required this.mediaUrl});
+  const MessageBubble({
+    super.key,
+    required this.message,
+    required this.mediaUrl,
+    this.status,
+    this.onRetry,
+  });
 
   final Message message;
   final String Function(String) mediaUrl;
+
+  /// 还没被 ack 的消息：sending / failed。
+  final String? status;
+
+  /// failed 时点一下重发。
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -46,15 +58,30 @@ class MessageBubble extends StatelessWidget {
             ],
             if (message.text.isNotEmpty) _text(context),
             const SizedBox(height: 2),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Text(
-                DateFormat('HH:mm').format(message.at),
-                style: TextStyle(
-                  fontSize: 10.5,
-                  color: AppTheme.text.withValues(alpha: 0.55),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  DateFormat('HH:mm').format(message.at),
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: AppTheme.text.withValues(alpha: 0.55),
+                  ),
                 ),
-              ),
+                if (status != null) ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: status == 'failed' ? onRetry : null,
+                    child: Text(
+                      status == 'failed' ? '发送失败，点这里重发' : '发送中…',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: status == 'failed' ? AppTheme.error : AppTheme.text.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ),

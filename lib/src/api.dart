@@ -1,7 +1,8 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 
 import 'models.dart';
 
@@ -26,6 +27,9 @@ class ChatApi {
   HttpClient? _client;
   StreamSubscription<Map<String, dynamic>>? _events;
   final _eventsController = StreamController<Map<String, dynamic>>.broadcast();
+
+  /// SSE 是否在线：断线横幅和「重连后补发」都靠它。
+  final ValueNotifier<bool> connected = ValueNotifier<bool>(false);
 
   /// 实时消息流（新回复、DSH 主动推来的）。
   Stream<Map<String, dynamic>> get events => _eventsController.stream;
@@ -86,14 +90,19 @@ class ChatApi {
   Future<void> deleteConversation(String id) => _send('DELETE', '/api/conversations/$id');
 
   /// 发一条消息，返回服务端落下的（用户消息 + 可能的多条回复）。
+  ///
+  /// [clientMessageId] 是幂等键：断线重发同一条时，服务端只会入库一次，
+  /// 上次生成失败的话会复用这条用户消息重新跑一轮。
   Future<SendResult> sendMessage(
     String conversationId, {
     required String text,
     List<String> attachmentIds = const [],
+    String? clientMessageId,
   }) async {
     final data = await _send('POST', '/api/conversations/$conversationId/messages', {
       'text': text,
       'attachments': attachmentIds.map((id) => {'id': id}).toList(),
+      if (clientMessageId != null) 'clientMessageId': clientMessageId,
     });
     final replies = (data['replies'] as List?) ?? [data['reply']];
     return SendResult(
@@ -103,6 +112,19 @@ class ChatApi {
           .map(Message.fromJson)
           .toList(),
     );
+  }
+
+  /// 增量拉取：只要 seq 大于 [since] 的消息（断线重连用）。
+  Future<List<Message>> messagesSince(String conversationId, int since, {int limit = 200}) async {
+    final data = await _send(
+      'GET',
+      '/api/conversations/$conversationId/messages?since=$since&limit=$limit',
+    );
+    final list = (data['messages'] as List?) ?? const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(Message.fromJson)
+        .toList();
   }
 
   /// 上传附件；voice 的话带上时长（秒）。
@@ -145,9 +167,11 @@ class ChatApi {
         request.headers.set(HttpHeaders.acceptHeader, 'text/event-stream');
         final response = await request.close();
         if (response.statusCode != 200) {
+          connected.value = false;
           await Future<void>.delayed(const Duration(seconds: 3));
           continue;
         }
+        connected.value = true;
         var buffer = '';
         await for (final chunk in response.transform(utf8.decoder)) {
           buffer += chunk;
@@ -169,8 +193,11 @@ class ChatApi {
             index = buffer.indexOf('\n\n');
           }
         }
+        // 流正常结束 = 服务端断开
+        connected.value = false;
       } catch (_) {
         // 网络抖一下就等会儿重连
+        connected.value = false;
       }
       await Future<void>.delayed(const Duration(seconds: 2));
     }
@@ -178,6 +205,7 @@ class ChatApi {
 
   void dispose() {
     _events?.cancel();
+    connected.value = false;
     _client?.close(force: true);
     _eventsController.close();
   }

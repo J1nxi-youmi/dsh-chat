@@ -1,4 +1,4 @@
-﻿import 'package:flutter/gestures.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models.dart';
 import '../theme.dart';
 
-final _linkPattern = RegExp(r"https?://[^\s<>'\"]+");
+final _linkPattern = RegExp('https?://[^\\s<>\'"]+');
 
 /// 一条消息：文字（链接可点）、图片、语音、文件。
 class MessageBubble extends StatelessWidget {

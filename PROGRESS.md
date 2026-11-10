@@ -6,7 +6,7 @@
 
 | 任务 | 结果 | 产物 |
 |---|---|---|
-| `build-apk` | ✅ | `app-release.apk`（约 25 MB） |
+| `build-apk` | ✅ | `app-release.apk`（约 54 MB，含全部 ABI） |
 | `build-windows` | ✅ | `dsh_chat.exe` + 依赖 DLL（Release 目录打包约 12 MB） |
 
 免登录下载（main 每次提交自动覆盖同一个 release）：

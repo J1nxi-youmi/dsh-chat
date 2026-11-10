@@ -11,6 +11,11 @@ android/
 ios/
 windows/
 
+# CI 产物（构建日志会强制推到 ci-logs / ci-logs-win 分支）
+analyze.log
+build.log
+windows.log
+
 # 编辑器
 .idea/
 .vscode/

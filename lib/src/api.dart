@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -24,7 +24,7 @@ class ChatApi {
   final String token;
 
   HttpClient? _client;
-  StreamSubscription<String>? _events;
+  StreamSubscription<Map<String, dynamic>>? _events;
   final _eventsController = StreamController<Map<String, dynamic>>.broadcast();
 
   /// 实时消息流（新回复、DSH 主动推来的）。

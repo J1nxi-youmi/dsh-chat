@@ -1,4 +1,4 @@
-name: dsh_chat
+﻿name: dsh_chat
 description: 连接任意一台 DSH 的聊天客户端（文字 / 图片 / 链接 / 语音 / 文件）
 publish_to: "none"
 version: 0.1.0
@@ -12,7 +12,7 @@ dependencies:
   http: ^1.2.2
   shared_preferences: ^2.3.2
   file_picker: ^8.1.2
-  record: ^5.1.2
+  record: ^7.1.2
   just_audio: ^0.9.42
   just_audio_windows: ^0.2.3
   path_provider: ^2.1.4

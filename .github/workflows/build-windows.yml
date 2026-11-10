@@ -108,3 +108,24 @@ jobs:
                  --notes "main 每次提交自动覆盖：dsh-chat.apk（Android）、dsh-chat-windows.zip（Windows 便携版）、dsh-chat-setup.exe（Windows 安装包）" \
                  || true
           gh release upload latest-build dsh-chat-windows.zip dist/dsh-chat-setup.exe --clobber
+
+      # release 正文只在创建时写一次，后面每次构建都改一遍，免得列表里还是老内容。
+      - name: Update release notes
+        if: success()
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit latest-build \
+            --title "最新构建" \
+            --notes "$(printf '%s\n' \
+              'dsh-chat 自动构建（每次 main 提交覆盖同一个 release）' \
+              '' \
+              '- Android：dsh-chat.apk（签名固定，可直接覆盖安装）' \
+              '- Windows 安装包：dsh-chat-setup.exe（可改安装目录、建桌面快捷方式）' \
+              '- Windows 便携版：dsh-chat-windows.zip' \
+              '' \
+              "提交：$GITHUB_SHA" \
+              "构建号：${{ github.run_number }}")"
+

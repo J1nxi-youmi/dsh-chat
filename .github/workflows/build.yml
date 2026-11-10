@@ -1,0 +1,35 @@
+name: build-apk
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # 仓库里只有 lib/ 和 pubspec，安卓工程由 flutter 自己生成，
+      # 省得把 Gradle 那一堆手写文件塞进仓库。
+      - name: Generate android project
+        run: flutter create --platforms=android --project-name dsh_chat .
+
+      - name: Patch AndroidManifest (权限 / 明文 HTTP)
+        run: bash tool/patch_android.sh
+
+      - run: flutter pub get
+      - run: flutter analyze || true
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-chat-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

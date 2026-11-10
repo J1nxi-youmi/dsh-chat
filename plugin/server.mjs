@@ -797,6 +797,7 @@ const server = createServer(async (req, res) => {
         // 协议版本：客户端可以用它判断服务端支不支持 seq / clientMessageId。
         protocol: 1,
         capabilities: ['seq', 'ack', 'since', 'clientMessageId'],
+        maxUploadBytes: config.maxUploadBytes,
         upstream: config.baseUrl,
         model: config.model,
         sessionPerConversation: Boolean(config.sessionPerConversation),

@@ -1,0 +1,30 @@
+name: build-windows
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # 同一套 lib/，Windows 工程也由 flutter 现生成
+      - name: Generate windows project
+        run: flutter create --platforms=windows --project-name dsh_chat .
+
+      - run: flutter pub get
+      - run: flutter build windows --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-chat-windows
+          path: build/windows/x64/runner/Release/
+          if-no-files-found: error

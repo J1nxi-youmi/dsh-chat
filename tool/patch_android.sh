@@ -4,8 +4,9 @@
 # 2) 允许明文 HTTP（聊天服务常是 http://192.168.x.x:8792）
 # 3) 主工程 compileSdk 提到 36
 #
-# 注意：插件模块（file_picker）自己的 compileSdk 也要够新，这只改主工程不够，
-# 所以正解是把 file_picker 升到 13.x。见 PROGRESS.md。
+# 插件模块自己的 compileSdk 不归这里管：file_picker 已升到 13.x 联邦版，
+# android_file_picker 用的是 flutter.compileSdkVersion（跟随 Flutter SDK），
+# 不再硬编码 34，所以 ':file_picker:checkReleaseAarMetadata' 那个坑没了。
 set -euo pipefail
 
 MANIFEST=android/app/src/main/AndroidManifest.xml

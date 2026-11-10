@@ -23,6 +23,11 @@ jobs:
       - name: Generate android project
         run: flutter create --platforms=android --project-name dsh_chat .
 
+      # 模板自带的 test/widget_test.dart 引用的是模板的 MyApp，和本项目无关，
+      # 留着只会让 analyze 报一堆假错误。
+      - name: Drop template test
+        run: rm -f test/widget_test.dart
+
       - name: Patch AndroidManifest
         run: bash tool/patch_android.sh
 

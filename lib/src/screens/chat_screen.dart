@@ -1,6 +1,5 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -38,7 +37,6 @@ class _ChatScreenState extends State<ChatScreen> {
   StreamSubscription<Map<String, dynamic>>? _events;
   bool _sending = false;
   bool _recording = false;
-  String? _recordingPath;
   DateTime? _recordStarted;
   Timer? _ticker;
   Duration _recorded = Duration.zero;
@@ -100,11 +98,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _pickFiles() async {
     try {
-      final result = await FilePicker.platform.pickFiles(allowMultiple: true, withData: true);
-      if (result == null) return;
-      for (final file in result.files) {
-        final bytes = file.bytes;
-        if (bytes == null) continue;
+      // file_picker 13.x：pickFiles 直接返回 List<PlatformFile>（多选默认开），
+      // 字节要自己 readAsBytes()，没有 withData 参数了。
+      final files = await FilePicker.pickFiles();
+      for (final file in files) {
+        final bytes = await file.readAsBytes();
         if (bytes.length > 12 * 1024 * 1024) {
           _toast('${file.name} 超过 12MB');
           continue;
@@ -118,6 +116,7 @@ class _ChatScreenState extends State<ChatScreen> {
           kind: isImage ? 'image' : 'file',
           textPreview: _isText(file.name) ? String.fromCharCodes(bytes.take(4000)) : null,
         );
+        if (!mounted) return;
         setState(() => _pending.add(attachment));
       }
     } catch (error) {
@@ -142,7 +141,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     setState(() {
       _recording = true;
-      _recordingPath = path;
       _recordStarted = DateTime.now();
       _recorded = Duration.zero;
     });

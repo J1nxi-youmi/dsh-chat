@@ -1,19 +1,23 @@
-﻿name: dsh_chat
+name: dsh_chat
 description: 连接任意一台 DSH 的聊天客户端（文字 / 图片 / 链接 / 语音 / 文件）
 publish_to: "none"
 version: 0.1.0
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.44.0"
 
 dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.2
   shared_preferences: ^2.3.2
-  file_picker: ^8.1.2
+  # 13.x 是联邦插件：Android 端用 flutter.compileSdkVersion 编译，
+  # 不再像 8.x 那样硬编码 compileSdk 34，AAR 校验才能过。
+  file_picker: ^13.3.3
   record: ^7.1.2
-  just_audio: ^0.9.42
+  # 和 just_audio_windows 0.2.3 配套的是 0.10.x 的方法通道协议
+  just_audio: ^0.10.6
   just_audio_windows: ^0.2.3
   path_provider: ^2.1.4
   url_launcher: ^6.3.1

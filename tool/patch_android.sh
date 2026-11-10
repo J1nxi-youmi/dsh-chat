@@ -28,7 +28,39 @@ perl -0pi -e 's/compileSdk\s*=\s*flutter\.compileSdkVersion/compileSdk = 36/' "$
 # Groovy DSL: compileSdkVersion flutter.compileSdkVersion
 perl -0pi -e 's/compileSdkVersion\s+flutter\.compileSdkVersion/compileSdkVersion 36/' "$GRADLE"
 
-echo "--- AndroidManifest 关键行 ---"
-grep -E 'RECORD_AUDIO|INTERNET|usesCleartextTraffic' "$MANIFEST"
+# 插件模块（file_picker 等）自带 compileSdk 34，会在 checkReleaseAarMetadata 里失败。
+# 在根工程里把所有子工程的 compileSdk 统一抬到 36。
+ROOT_GRADLE=android/build.gradle.kts
+if [ -f "$ROOT_GRADLE" ]; then
+  if ! grep -q 'subprojects' "$ROOT_GRADLE"; then
+    cat >> "$ROOT_GRADLE" <<'KTS'
+
+subprojects {
+    afterEvaluate {
+        val androidExtension = extensions.findByName("android")
+        if (androidExtension is com.android.build.gradle.BaseExtension) {
+            androidExtension.compileSdkVersion(36)
+        }
+    }
+}
+KTS
+  fi
+else
+  ROOT_GRADLE=android/build.gradle
+  if [ -f "$ROOT_GRADLE" ] && ! grep -q 'subprojects' "$ROOT_GRADLE"; then
+    cat >> "$ROOT_GRADLE" <<'GRV'
+
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android.compileSdkVersion 36
+        }
+    }
+}
+GRV
+  fi
+fi
+
 echo "--- compileSdk ---"
 grep -nE 'compileSdk' "$GRADLE" || true
+grep -nE 'subprojects' "$ROOT_GRADLE" || true

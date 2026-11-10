@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # 在 CI 里给 flutter 生成的 Android 工程补几样东西：
 # 1) 录音 / 网络权限
 # 2) 允许明文 HTTP（聊天服务常是 http://192.168.x.x:8792）
@@ -32,9 +32,10 @@ perl -0pi -e 's/compileSdkVersion\s+flutter\.compileSdkVersion/compileSdkVersion
 # 在根工程里把所有子工程的 compileSdk 统一抬到 36。
 ROOT_GRADLE=android/build.gradle.kts
 if [ -f "$ROOT_GRADLE" ]; then
-  if ! grep -q 'subprojects' "$ROOT_GRADLE"; then
+  if ! grep -q 'ci-compile-sdk-patch' "$ROOT_GRADLE"; then
     cat >> "$ROOT_GRADLE" <<'KTS'
 
+// ci-compile-sdk-patch: 插件模块也抬到 36
 subprojects {
     afterEvaluate {
         val androidExtension = extensions.findByName("android")
@@ -47,9 +48,10 @@ KTS
   fi
 else
   ROOT_GRADLE=android/build.gradle
-  if [ -f "$ROOT_GRADLE" ] && ! grep -q 'subprojects' "$ROOT_GRADLE"; then
+  if [ -f "$ROOT_GRADLE" ] && ! grep -q 'ci-compile-sdk-patch' "$ROOT_GRADLE"; then
     cat >> "$ROOT_GRADLE" <<'GRV'
 
+// ci-compile-sdk-patch: 插件模块也抬到 36
 subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {

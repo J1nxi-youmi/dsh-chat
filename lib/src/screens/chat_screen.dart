@@ -54,6 +54,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _connected = widget.api.connected.value;
     widget.api.connected.addListener(_onConnection);
+    _input.addListener(_onInputChanged);
     _loadOutbox();
     _load();
     _events = widget.api.events.listen(_onEvent);
@@ -62,12 +63,19 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     widget.api.connected.removeListener(_onConnection);
+    _input.removeListener(_onInputChanged);
     _events?.cancel();
     _ticker?.cancel();
     _recorder.dispose();
     _input.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  bool get _canSend => _input.text.trim().isNotEmpty || _pending.isNotEmpty;
+
+  void _onInputChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onConnection() {
@@ -516,7 +524,7 @@ class _ChatScreenState extends State<ChatScreen> {
             RoundButton(
               icon: Icons.arrow_upward_rounded,
               color: AppTheme.accent,
-              onPressed: _sending ? null : _send,
+              onPressed: _sending || !_canSend ? null : _send,
             ),
           ],
         ),

@@ -1,9 +1,18 @@
 # dsh-chat-app
 
-连任意一台 DSH 的原生聊天客户端。**Flutter 一套代码，Android 直接出 APK。**
+连任意一台 DSH 的原生聊天客户端。**Flutter 一套代码，Android + Windows。**
 
 核心：文字、图片、链接、语音、文件，双向收发；后端是任意一台装着 `dsh-plugin-chat` 的 DSH
 （手机本机引擎也行，电脑也行）。
+
+## 直接下载
+
+`main` 每次提交 CI 都会自动覆盖这两个文件（免登录）：
+
+| 平台 | 链接 | 说明 |
+|---|---|---|
+| Android | <https://github.com/J1nxi-youmi/dsh-chat/releases/latest/download/dsh-chat.apk> | 传到手机装，允许「安装未知来源」 |
+| Windows | <https://github.com/J1nxi-youmi/dsh-chat/releases/latest/download/dsh-chat-windows.zip> | 解压后跑 `dsh_chat.exe` |
 
 ## 长什么样
 
@@ -12,19 +21,19 @@
 - 语音按一下录、再按一下发，气泡里点播放
 - 断线自动重连（SSE），回复一条条冒出来
 
-## 怎么拿 APK（不用装 Android SDK）
+## 自己构建（不用装 Android SDK / Visual Studio）
 
-仓库里只有 `lib/` 和 `pubspec.yaml`，安卓工程由 CI 生成：
+仓库里只有 `lib/`、`pubspec.yaml` 和补丁脚本，平台工程由 CI 现生成：
 
-1. 把这个目录推到一个 GitHub 仓库（`main` 分支）；
-2. 打开仓库的 **Actions → build-apk**，它会自动跑；
-3. 跑完在 **Artifacts** 里下 `dsh-chat-apk`，里面是 `app-release.apk`；
-4. 传到手机安装（允许「安装未知来源」）。
+1. 推到 GitHub 的 `main` 分支；
+2. **Actions** 里会自动跑 `build-apk` 和 `build-windows`；
+3. 成功后在 **Artifacts** 下 `dsh-chat-apk` / `dsh-chat-windows`，同时覆盖到 `latest-build` release。
 
 第一次构建大约 5–8 分钟，之后有缓存会快很多。
 
-> 想在本地构建也可以，装 Flutter 后 `flutter create --platforms=android . && flutter build apk`，
-> 但 CI 更省事。
+> 本地也能编（装 Flutter + Android SDK / Visual Studio 就行）：
+> `flutter create --platforms=android . && flutter build apk`。
+> 只跑静态检查的话 `flutter pub get && flutter analyze` 就够。
 
 ## 连哪台 DSH
 
@@ -62,12 +71,14 @@ lib/
     screens/chat_screen.dart         对话、发消息、录音、选文件
     widgets/message_bubble.dart      气泡：文字/链接/图片/语音/文件
 tool/patch_android.sh           CI 里补权限和明文 HTTP
+tool/patch_windows.ps1          CI 里给生成的 CMakeLists 加 MSVC 兼容宏
 .github/workflows/build.yml     出 APK
+.github/workflows/build-windows.yml  出 Windows 包
 ```
 
 ## 已知限制
 
-- 只做了 Android；iOS 需要 macOS + Xcode 才能编。
+- iOS 还没做；需要 macOS + Xcode 才能编。
 - 语音是「发语音条」，模型听到的是转写文字（后端配了 ASR 才有，没配就只有「语音，约 N 秒」）。
 - 附件走 HTTP 直连；如果后端只走中转，图片/语音暂时拿不到。
 - 大文件上限 12MB（跟服务端一致）。

@@ -59,3 +59,23 @@ jobs:
           name: dsh-chat-windows
           path: build/windows/x64/runner/Release/
           if-no-files-found: error
+
+      # 和 APK 一样，覆盖到 latest-build release，给一条免登录的下载链接：
+      #   https://github.com/J1nxi-youmi/dsh-chat/releases/latest/download/dsh-chat-windows.zip
+      - name: Zip windows build
+        if: success()
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dsh-chat-windows.zip -Force
+
+      - name: Publish Windows build to release
+        if: success()
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view latest-build >/dev/null 2>&1 \
+            || gh release create latest-build \
+                 --title "最新构建" \
+                 --notes "main 每次提交自动覆盖：dsh-chat.apk（Android）、dsh-chat-windows.zip（Windows）" \
+                 || true
+          gh release upload latest-build dsh-chat-windows.zip --clobber

@@ -60,3 +60,21 @@ jobs:
           name: dsh-chat-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+
+      # Actions 的 artifact 要登录才能下，手机上很麻烦；
+      # 顺手覆盖到 latest-build 这个 release，给一条能直接点开装的链接：
+      #   https://github.com/J1nxi-youmi/dsh-chat/releases/latest/download/dsh-chat.apk
+      - name: Publish APK to release
+        if: success()
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk dsh-chat.apk
+          gh release view latest-build >/dev/null 2>&1 \
+            || gh release create latest-build \
+                 --title "最新构建" \
+                 --notes "main 每次提交自动覆盖：dsh-chat.apk（Android）、dsh-chat-windows.zip（Windows）" \
+                 || true
+          gh release upload latest-build dsh-chat.apk --clobber

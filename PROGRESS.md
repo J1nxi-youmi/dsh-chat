@@ -1,49 +1,58 @@
-# 进度存档（2026-11-11 03:40）
+# 进度存档（2026-11-11 04:20）
 
 ## 现在到哪了
 
-- 原生 App（Flutter）源码已推上 GitHub：**https://github.com/J1nxi-youmi/dsh-chat**
-- 两个 CI 任务：`build-apk`（Android）、`build-windows`（Windows 桌面）
-- **都还没编过**，正在逐个修编译错误；Dart 部分已经能过，只剩 Android 打包配置
+**两条 CI 都绿了**（Flutter 3.47.9 / Dart 3.13.7，GitHub Actions）：
 
-## 已经修掉的错误
-
-| # | 错误 | 处理 |
+| 任务 | 结果 | 产物 |
 |---|---|---|
-| 1 | Dart raw 字符串里写 `\"`，把字符串截断了 | 改成普通字符串转义 |
-| 2 | `record` 平台包签名冲突（5.x 太旧） | 升到 7.x |
-| 3 | SSE 订阅类型写错（`StreamSubscription<String>`） | 改成 `Map<String, dynamic>` |
-| 4 | 主工程 `compileSdk 34`，`file_picker` 要 36 | 补丁改成 36 |
+| `build-apk` | ✅ | `app-release.apk`（约 25 MB） |
+| `build-windows` | ✅ | `dsh_chat.exe` + 依赖 DLL（Release 目录打包约 12 MB） |
 
-## 卡在哪（下一步就从这继续）
+免登录下载（main 每次提交自动覆盖同一个 release）：
 
-**当前错误**：`Execution failed for task ':file_picker:checkReleaseAarMetadata'`
+- Android：<https://github.com/J1nxi-youmi/dsh-chat/releases/latest/download/dsh-chat.apk>
+- Windows：<https://github.com/J1nxi-youmi/dsh-chat/releases/latest/download/dsh-chat-windows.zip>
 
-原因：`file_picker` 8.x 这个插件模块自己是按 compileSdk 34 编的，而它依赖的
-`flutter_plugin_android_lifecycle` 要求 36。**只改主工程没用**。
+## 修掉的两个拦路虎
 
-试过但**不行**的做法（已回滚）：在根 `android/build.gradle.kts` 里加
-`subprojects { afterEvaluate { ... compileSdkVersion(36) } }` —— 报
-`Cannot run Project.afterEvaluate(Action) when the project is already evaluated`。
+| # | 现象 | 原因 | 修法 |
+|---|---|---|---|
+| 1 | `Execution failed for task ':file_picker:checkReleaseAarMetadata'`：`:file_picker is currently compiled against android-34`，而 `flutter_plugin_android_lifecycle` 要 36 | `file_picker` 8.x 的 Android 模块**硬编码** `compileSdkVersion 34`；只抬主工程没用，`afterEvaluate` 那种补丁又会崩 | 升到 **file_picker 13.3.3**：它拆成联邦插件，`android_file_picker` 用 `flutter.compileSdkVersion` 编译，不再写死版本。API 也跟着变：`FilePicker.pickFiles()` 变成静态方法、直接返回 `List<PlatformFile>`，没有 `withData`，字节要自己 `readAsBytes()` |
+| 2 | Windows：`error C2338: static assertion failed: 'error STL1011: The /await compiler option, <experimental/coroutine> ... deprecated by Microsoft and will be REMOVED SOON'`，目标 `just_audio_windows_plugin.vcxproj` | `just_audio_windows` 0.2.3 的 C++/WinRT 还在用 `/await` + `<experimental/coroutine>`；`windows-latest` 上的 VS 18 / MSVC 14.51 把这条路直接判成**错误** | 新增 `tool/patch_windows.ps1`：在 `flutter create` 生成的 `windows/CMakeLists.txt` 里加 `add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)`（目录级宏，会继承到插件子目录） |
 
-**推荐下一步**：
+顺手做的：
 
-1. 把 `pubspec.yaml` 里的 `file_picker` 升到 `^13.3.3`（2026-11 最新，要求 Flutter ≥3.38，
-   CI 是 3.47.9，满足）；它的 `android_file_picker` 自己就用新 compileSdk。
-   注意 13.x 的 API 可能和 8.x 有差异，`lib/src/screens/chat_screen.dart` 里的
-   `FilePicker.platform.pickFiles(allowMultiple: true, withData: true)` 要跟着改。
-2. 或者换掉 `file_picker`，用官方 `file_selector`（`openFiles()` 返回 `XFile`）。
-3. 改完推上去，看 `ci-logs` 分支上的 `build.log`（第一行是 commit sha，确认是不是最新那次）。
+- `just_audio` 0.9.42 → **0.10.6**，和 `just_audio_windows` 0.2.3 的方法通道协议对上。
+- 删掉模板生成的 `test/widget_test.dart`（它测的是模板的 `MyApp`），`flutter analyze` 从 20 个假错误变成 **0 issue**。
+- Windows CI 也把构建输出推到 **`ci-logs-win`** 分支（Actions 原始日志要登录才能看）。
+- APK / Windows 包自动上传到 `latest-build` release，手机点链接就能装。
+- 仓库里删掉误提交的 `analyze.log` / `build.log`（CI 日志只留在 `ci-logs` / `ci-logs-win` 分支）。
 
 ## 怎么看 CI 日志
 
-CI 每次跑完会把 `build.log` / `analyze.log` 强制推到一个叫 **`ci-logs`** 的分支：
+CI 每次跑完会把日志强制推到分支，第一行是 commit sha，第二行是时间——对不上就是旧日志。
 
 ```
-https://raw.githubusercontent.com/J1nxi-youmi/dsh-chat/ci-logs/build.log
+https://raw.githubusercontent.com/J1nxi-youmi/dsh-chat/ci-logs/build.log      # Android 构建
+https://raw.githubusercontent.com/J1nxi-youmi/dsh-chat/ci-logs/analyze.log    # flutter analyze
+https://raw.githubusercontent.com/J1nxi-youmi/dsh-chat/ci-logs-win/windows.log # Windows 构建（MSVC/CMake 报错都在这）
 ```
 
-第一行是 commit sha，第二行是时间——对不上就是旧日志。
+## 本地怎么验证（这台机器已经装好 Flutter）
+
+```
+Y:\deep\workshop\tools\flutter\flutter\bin\flutter.bat
+```
+
+```powershell
+$env:PATH = "Y:\deep\workshop\tools\git\cmd;Y:\deep\workshop\tools\flutter\flutter\bin;" + $env:PATH
+cd Y:\deep\workshop\dsh-chat-app
+flutter pub get
+flutter analyze          # 应该 No issues found
+```
+
+没有 Visual Studio / Android SDK，所以**只是不能在本机出包**，出包还是交给 CI。
 
 ## 后端那套（不依赖这个仓库）
 
@@ -64,10 +73,12 @@ App 连后端就两样：**地址 + 令牌**（直连），或者 **中转地址
 - 对话页：文字、图片（点开大图）、文件（点开系统程序）、语音（录/放）
 - 链接可点、消息走 SSE 实时到、断线重连
 - 深空底色 + 星点背景 + 渐变气泡（照星伴的调子）
+- Android + Windows 同一套代码
 
 ## 已知待办
 
-- [ ] 修 Android 构建（上面的 file_picker）
-- [ ] 修 Windows 构建（`just_audio_windows` 和 `just_audio` 版本要对上，可能也要升）
 - [ ] 附件走中转（现在中转模式下图片/语音下不来）
+- [ ] App 里把「中转房间」做成扫码配对
 - [ ] 语音转文字在 App 端只发语音条，模型听到的是后端 ASR 的结果
+- [ ] Windows 上还没实机点过（CI 只证明能编过）
+- [ ] iOS 还没做（要 macOS + Xcode）

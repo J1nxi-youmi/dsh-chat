@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api.dart';
+import '../session.dart';
 import '../theme.dart';
 import 'conversations_screen.dart';
 
@@ -50,6 +51,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('server', server);
       await prefs.setString('token', token);
+      // 换了一台 DSH：全局连接跟着换，SSE 和通知继续生效。
+      Session.attach(api);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(

@@ -26,6 +26,7 @@ class ChatApi {
 
   HttpClient? _client;
   StreamSubscription<Map<String, dynamic>>? _events;
+  bool _eventsStarted = false;
   final _eventsController = StreamController<Map<String, dynamic>>.broadcast();
 
   /// SSE 是否在线：断线横幅和「重连后补发」都靠它。
@@ -154,8 +155,10 @@ class ChatApi {
     return '$url${url.contains('?') ? '&' : '?'}t=$token';
   }
 
-  /// 连 SSE，断了自己重连。
+  /// 连 SSE，断了自己重连。重复调用无副作用。
   void startEvents() {
+    if (_eventsStarted) return;
+    _eventsStarted = true;
     _events?.cancel();
     _events = _listen().listen(_eventsController.add);
   }

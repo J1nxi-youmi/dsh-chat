@@ -6,10 +6,11 @@ build/
 .flutter-plugins-dependencies
 pubspec.lock
 
-# 生成出来的安卓工程（CI 里现生成）
-android/
-ios/
-windows/
+# 生成出来的平台工程（CI 里现生成）；只忽略根目录，
+# tool/android/*.kt 这类补丁模板要进仓库。
+/android/
+/ios/
+/windows/
 
 # CI 产物（构建日志会强制推到 ci-logs / ci-logs-win 分支）
 analyze.log

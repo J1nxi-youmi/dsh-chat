@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# 在 CI 里给 flutter 生成的 Android 工程补几样东西：
-# 1) 录音 / 网络权限
+# 在 CI 里给 flutter 生成的 Android 工程打补丁：
+# 1) 录音 / 网络 / 通知 / 前台服务 权限
 # 2) 允许明文 HTTP（聊天服务常是 http://192.168.x.x:8792）
 # 3) 主工程 compileSdk 提到 36
+# 4) 前台服务（保活）+ 系统通知：把 tool/android/*.kt 放进工程并声明 service
 #
-# 插件模块自己的 compileSdk 不归这里管：file_picker 已升到 13.x 联邦版，
-# android_file_picker 用的是 flutter.compileSdkVersion（跟随 Flutter SDK），
-# 不再硬编码 34，所以 ':file_picker:checkReleaseAarMetadata' 那个坑没了。
+# 插件模块自己的 compileSdk 不归这里管：file_picker 已升到 13.x 联邦版。
 set -euo pipefail
 
 MANIFEST=android/app/src/main/AndroidManifest.xml
@@ -16,21 +15,46 @@ if [ ! -f "$MANIFEST" ]; then
   exit 1
 fi
 
+# --- 权限 ---
 if ! grep -q 'android.permission.RECORD_AUDIO' "$MANIFEST"; then
-  perl -0pi -e 's#(<manifest[^>]*>)#$1\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.INTERNET" />#' "$MANIFEST"
+  perl -0pi -e 's#(<manifest[^>]*>)#$1\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />#' "$MANIFEST"
+else
+  # 老清单可能已经有 RECORD_AUDIO，只补通知 / 前台服务这几条。
+  for perm in POST_NOTIFICATIONS FOREGROUND_SERVICE FOREGROUND_SERVICE_REMOTE_MESSAGING; do
+    if ! grep -q "android.permission.$perm" "$MANIFEST"; then
+      perl -0pi -e "s#(<uses-permission android:name=\"android.permission.RECORD_AUDIO\" />)#\$1\n    <uses-permission android:name=\"android.permission.$perm\" />#" "$MANIFEST"
+    fi
+  done
 fi
 
+# --- 明文 HTTP ---
 if ! grep -q 'usesCleartextTraffic' "$MANIFEST"; then
   perl -0pi -e 's#(<application\b)#$1 android:usesCleartextTraffic="true"#' "$MANIFEST"
 fi
 
+# --- 前台服务声明 ---
+if ! grep -q 'ChatService' "$MANIFEST"; then
+  perl -0pi -e 's#(<application\b[^>]*>)#$1\n        <service android:name=".ChatService" android:exported="false" android:foregroundServiceType="remoteMessaging" />#' "$MANIFEST"
+fi
+
+# --- compileSdk ---
 GRADLE=android/app/build.gradle.kts
 [ -f "$GRADLE" ] || GRADLE=android/app/build.gradle
 
 perl -0pi -e 's/compileSdk\s*=\s*flutter\.compileSdkVersion/compileSdk = 36/' "$GRADLE"
 perl -0pi -e 's/compileSdkVersion\s+flutter\.compileSdkVersion/compileSdkVersion 36/' "$GRADLE"
 
+# --- 原生源码：MainActivity / ChatService / Notifications ---
+PKG=$(grep -oE 'namespace[[:space:]]*=[[:space:]]*"[^"]+"' "$GRADLE" | head -1 | sed -E 's/.*"([^"]+)"/\1/')
+PKG=${PKG:-com.example.dsh_chat}
+KT_DIR="android/app/src/main/kotlin/$(echo "$PKG" | tr '.' '/')"
+mkdir -p "$KT_DIR"
+for file in MainActivity ChatService Notifications; do
+  sed "s/__PKG__/$PKG/g" "tool/android/$file.kt" > "$KT_DIR/$file.kt"
+  echo "写入 $KT_DIR/$file.kt（package $PKG）"
+done
+
 echo "--- AndroidManifest 关键行 ---"
-grep -E 'RECORD_AUDIO|INTERNET|usesCleartextTraffic' "$MANIFEST"
+grep -E 'RECORD_AUDIO|INTERNET|POST_NOTIFICATIONS|FOREGROUND_SERVICE|usesCleartextTraffic|ChatService' "$MANIFEST"
 echo "--- compileSdk ---"
 grep -nE 'compileSdk' "$GRADLE" || true

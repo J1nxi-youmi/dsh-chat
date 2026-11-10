@@ -22,6 +22,8 @@ dependencies:
   path_provider: ^2.1.4
   url_launcher: ^6.3.1
   intl: ^0.19.0
+  # Windows 的系统通知（Android 的通知走原生通道，不用这个包）
+  local_notifier: ^0.1.6
 
 dev_dependencies:
   flutter_lints: ^4.0.0

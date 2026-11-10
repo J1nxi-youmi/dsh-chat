@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/api.dart';
+import 'src/notify.dart';
 import 'src/screens/connect_screen.dart';
 import 'src/screens/conversations_screen.dart';
+import 'src/session.dart';
 import 'src/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Windows 的系统通知、Android 的前台服务都在这里初始化。
+  await Notifier.setup();
   runApp(const ChatApp());
 }
 
@@ -35,6 +39,13 @@ class _Boot extends StatefulWidget {
 
 class _BootState extends State<_Boot> {
   final _prefs = SharedPreferences.getInstance();
+  bool _attached = false;
+
+  @override
+  void dispose() {
+    Session.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,8 +61,12 @@ class _BootState extends State<_Boot> {
         if (server.isEmpty || token.isEmpty) {
           return const ConnectScreen();
         }
+        if (!_attached) {
+          _attached = true;
+          Session.attach(ChatApi(baseUrl: server, token: token));
+        }
         return ConversationsScreen(
-          api: ChatApi(baseUrl: server, token: token),
+          api: Session.api!,
           server: server,
           token: token,
         );

@@ -9,6 +9,7 @@ import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api.dart';
+import '../app_state.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/message_bubble.dart';
@@ -52,6 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    activeConversationId.value = widget.conversationId;
     _connected = widget.api.connected.value;
     widget.api.connected.addListener(_onConnection);
     _input.addListener(_onInputChanged);
@@ -62,6 +64,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    if (activeConversationId.value == widget.conversationId) {
+      activeConversationId.value = null;
+    }
     widget.api.connected.removeListener(_onConnection);
     _input.removeListener(_onInputChanged);
     _events?.cancel();

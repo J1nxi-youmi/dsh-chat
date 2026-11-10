@@ -210,7 +210,6 @@ class _DesktopHomeState extends State<DesktopHome> {
           const AvatarBadge(name: 'DSH', size: 36),
           const SizedBox(height: 22),
           _railButton(Icons.chat_bubble_rounded, '消息', selected: true),
-          _railButton(Icons.people_alt_rounded, '联系人（还没做）', onTap: () => _toast('联系人还没做')),
           const Spacer(),
           _railButton(Icons.settings_rounded, '设置', onTap: _switchServer),
           const SizedBox(height: 16),
@@ -270,7 +269,7 @@ class _DesktopHomeState extends State<DesktopHome> {
               controller: _search,
               onChanged: (value) => setState(() => _query = value),
               decoration: InputDecoration(
-                hintText: '搜索角色、群聊或消息',
+                hintText: '搜索会话',
                 prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppTheme.muted),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),

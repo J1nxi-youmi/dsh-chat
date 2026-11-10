@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// 0.6 把老 API 挪到了 legacy.dart：windowManager / WindowOptions 还是这套顺手。
+// ignore_for_file: deprecated_member_use
+import 'package:window_manager/legacy.dart';
 
 import 'src/api.dart';
 import 'src/notify.dart';
@@ -11,8 +14,26 @@ import 'src/screens/desktop_home.dart';
 import 'src/session.dart';
 import 'src/theme.dart';
 
+bool get _isDesktopPlatform =>
+    Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (_isDesktopPlatform) {
+    await windowManager.ensureInitialized();
+    // 初始窗口按 QQ 的大小来：够放下三栏，又不会一开就糊满屏幕。
+    const options = WindowOptions(
+      size: Size(980, 660),
+      minimumSize: Size(780, 560),
+      center: true,
+      title: 'dsh-chat',
+      titleBarStyle: TitleBarStyle.normal,
+    );
+    await windowManager.waitUntilReadyToShow(options, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
   // Windows 的系统通知、Android 的前台服务都在这里初始化。
   await Notifier.setup();
   runApp(const ChatApp());

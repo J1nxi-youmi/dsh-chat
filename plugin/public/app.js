@@ -769,3 +769,42 @@ if (state.token) {
 } else {
   showLogin();
 }
+
+// ---------------------------------------------------------------- 设置
+
+const settingsDialog = $('#settingsDialog');
+
+async function openSettings() {
+  try {
+    const data = await api('/api/settings');
+    const s = data.settings;
+    $('#setPrompt').value = s.systemPrompt || '';
+    $('#setFetchLinks').checked = Boolean(s.fetchLinks);
+    $('#setBubbles').checked = Boolean(s.bubbles);
+    $('#setMaxMb').value = Math.round((s.maxUploadBytes || 0) / 1024 / 1024);
+    $('#settingsMsg').textContent = '';
+    settingsDialog.showModal();
+  } catch (error) {
+    flashError(error.message);
+  }
+}
+
+$('#settingsBtn')?.addEventListener('click', openSettings);
+$('#settingsCancel')?.addEventListener('click', () => settingsDialog.close());
+$('#settingsSave')?.addEventListener('click', async () => {
+  try {
+    await api('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        systemPrompt: $('#setPrompt').value,
+        fetchLinks: $('#setFetchLinks').checked,
+        bubbles: $('#setBubbles').checked,
+        maxUploadMb: Number($('#setMaxMb').value),
+      }),
+    });
+    $('#settingsMsg').textContent = '已保存';
+    setTimeout(() => settingsDialog.close(), 600);
+  } catch (error) {
+    $('#settingsMsg').textContent = error.message;
+  }
+});

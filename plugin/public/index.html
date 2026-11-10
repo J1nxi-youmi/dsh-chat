@@ -33,6 +33,7 @@
       <div id="conversationList" class="conversation-list"></div>
       <div class="drawer-foot">
         <span id="status" class="status">…</span>
+        <button id="settingsBtn" class="ghost" title="设置">⚙</button>
       </div>
     </aside>
 
@@ -64,6 +65,21 @@
     <span class="rec-dot"></span><span id="recTime">0.0s</span><span class="rec-hint">再点一下麦克风发送</span>
   </div>
 
+
+  <dialog id="settingsDialog" style="background:#12151f;color:#e8eaf0;border:1px solid #262c3d;border-radius:14px;padding:18px 20px;max-width:440px;width:90%;">
+    <h3 style="margin:0 0 12px;font-size:16px;">设置</h3>
+    <label style="display:block;font-size:12px;color:#8b93a7;margin-bottom:4px;">系统提示词</label>
+    <textarea id="setPrompt" rows="4" style="width:100%;box-sizing:border-box;background:#1a1e2b;color:#e8eaf0;border:1px solid #262c3d;border-radius:8px;padding:8px;font-size:13px;"></textarea>
+    <label style="display:flex;gap:8px;align-items:center;margin:10px 0;font-size:13px;"><input type="checkbox" id="setFetchLinks"> 抓取链接内容</label>
+    <label style="display:flex;gap:8px;align-items:center;margin:10px 0;font-size:13px;"><input type="checkbox" id="setBubbles"> 回复拆成多条气泡</label>
+    <label style="display:flex;gap:8px;align-items:center;margin:10px 0;font-size:13px;">单文件上限
+      <input type="number" id="setMaxMb" min="1" max="512" style="width:80px;background:#1a1e2b;color:#e8eaf0;border:1px solid #262c3d;border-radius:8px;padding:4px;"> MB</label>
+    <p id="settingsMsg" style="font-size:12px;color:#8b93a7;min-height:16px;margin:6px 0;"></p>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button type="button" id="settingsCancel" class="ghost">取消</button>
+      <button type="button" id="settingsSave" class="send" style="padding:8px 16px;border-radius:8px;">保存</button>
+    </div>
+  </dialog>
   <script type="module" src="/app.js"></script>
 </body>
 </html>

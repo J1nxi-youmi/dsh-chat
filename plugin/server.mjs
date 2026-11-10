@@ -492,6 +492,51 @@ async function handleApi(req, res, url) {
     return json(res, 200, { ok: true, conversationId: conversation.id, message });
   }
 
+  // 网页端的「设置」：只改聊天侧这几项，改完立即生效并写回 config.json。
+  if (path === '/api/settings') {
+    if (req.method === 'GET') {
+      return json(res, 200, {
+        ok: true,
+        settings: {
+          systemPrompt: config.systemPrompt,
+          fetchLinks: config.fetchLinks,
+          bubbles: config.bubbles,
+          maxUploadBytes: config.maxUploadBytes,
+          historyLimit: config.historyLimit,
+        },
+      });
+    }
+    if (req.method === 'POST') {
+      const body = await readJson(req, 64 * 1024);
+      let saved = {};
+      try {
+        saved = JSON.parse(await readFile(join(HERE, 'config.json'), 'utf8'));
+      } catch {
+        /* 没有就新建 */
+      }
+      if (typeof body.systemPrompt === 'string' && body.systemPrompt.trim()) {
+        config.systemPrompt = body.systemPrompt.trim().slice(0, 8000);
+        saved.systemPrompt = config.systemPrompt;
+      }
+      if (typeof body.fetchLinks === 'boolean') {
+        config.fetchLinks = body.fetchLinks;
+        saved.fetchLinks = config.fetchLinks;
+      }
+      if (typeof body.bubbles === 'boolean') {
+        config.bubbles = body.bubbles;
+        saved.bubbles = config.bubbles;
+      }
+      const mb = Number(body.maxUploadMb);
+      if (Number.isFinite(mb) && mb >= 1 && mb <= 512) {
+        config.maxUploadBytes = Math.round(mb * 1024 * 1024);
+        saved.maxUploadBytes = config.maxUploadBytes;
+      }
+      await writeFile(join(HERE, 'config.json'), JSON.stringify(saved, null, 2), 'utf8');
+      return json(res, 200, { ok: true });
+    }
+    return fail(res, 405, '不支持的方法');
+  }
+
   if (req.method === 'POST' && path === '/api/upload') {
     const body = await readJson(req);
     const name = String(body.name ?? 'file').slice(0, 120);

@@ -46,8 +46,8 @@ jobs:
         if: always()
         shell: bash
         run: |
-          git config user.name "ci-bot"
-          git config user.email "ci-bot@users.noreply.github.com"
+          git config user.name "DeepSeek"
+          git config user.email "deepseek@users.noreply.github.com"
           git checkout -B ci-logs-win
           git add -f windows.log 2>/dev/null || true
           git commit -m "windows logs ${{ github.run_id }} ${{ github.sha }}" || true

@@ -62,12 +62,15 @@ App 第一次打开会要两样东西：
 
 ## 后端要做什么
 
-在 DSH 那台机器上装两个插件：
+在 DSH 那台机器上**只装一个插件**：`dsh-plugin-chat`。
 
-1. `dsh-plugin-starlit-bridge`（或者任意 OpenAI 兼容后端）——负责把对话跑成 DSH 的一轮；
-2. `dsh-plugin-chat` —— 起聊天服务和网页端，`baseUrl` 指向第 1 个。
+- 它自带一个 OpenAI 兼容的桥（`127.0.0.1:8790`），把聊天直接跑成这条 DSH 里的一轮；
+  不用再单独装 `dsh-plugin-starlit-bridge`（已经合并进来了）；
+- 所有聊天默认写进**同一条会话**（`sessionKey: fixed`）。想写进某条已有会话，
+  把它的会话 id 填到插件配置的 `sessionId` 里；留空则自动建一条并一直复用；
+- 想接别的大模型也可以：把 `baseUrl` 填成任意 OpenAI 兼容地址即可（留空就用内置桥）。
 
-然后手机的 App 连 `dsh-plugin-chat` 的地址就行。
+然后 App 连 `dsh-plugin-chat` 的地址就行。
 
 ## 目录
 

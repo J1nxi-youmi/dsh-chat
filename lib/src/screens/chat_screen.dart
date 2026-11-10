@@ -263,8 +263,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _toast('已取消');
       return;
     }
-    if (path == null || duration < 0.5) {
-      _toast('太短了，再说长一点');
+    if (path == null || duration < 1.0) {
+      _toast('太短了，按住多说一会儿');
       return;
     }
     try {
@@ -646,11 +646,24 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Column(
                 children: [
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      _toolButton(Icons.image_outlined, '发送图片',
-                          () => _pickFiles(imagesOnly: true)),
-                      _toolButton(Icons.attach_file_rounded, '发送文件', _pickFiles),
+                      // 图片 / 文件收进一个「+」菜单，左边只留一个按钮，对齐也简单。
+                      PopupMenuButton<String>(
+                        tooltip: '图片 / 文件',
+                        padding: EdgeInsets.zero,
+                        splashRadius: 18,
+                        icon: const Icon(Icons.add_rounded, size: 22, color: AppTheme.muted),
+                        constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+                        onSelected: (value) {
+                          if (value == 'image') _pickFiles(imagesOnly: true);
+                          if (value == 'file') _pickFiles();
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(value: 'image', child: Text('图片')),
+                          PopupMenuItem(value: 'file', child: Text('文件')),
+                        ],
+                      ),
                       _micButton(),
                       const SizedBox(width: 4),
                       Expanded(
@@ -671,7 +684,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 border: InputBorder.none,
                                 enabledBorder: InputBorder.none,
                                 focusedBorder: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 11),
                               ),
                             ),
                           ),
@@ -701,17 +714,6 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _toolButton(IconData icon, String tooltip, VoidCallback onTap) {
-    return IconButton(
-      onPressed: onTap,
-      icon: Icon(icon, size: 21, color: AppTheme.muted),
-      tooltip: tooltip,
-      splashRadius: 18,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
     );
   }
 

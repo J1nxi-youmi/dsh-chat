@@ -54,6 +54,20 @@ for file in MainActivity ChatService Notifications; do
   echo "写入 $KT_DIR/$file.kt（package $PKG）"
 done
 
+# --- 固定签名 ---
+# CI 每次都是全新环境，debug keystore 每次都不一样 —— 签名一变就装不上覆盖更新。
+# 这里把仓库里的固定 keystore 拷进去，release 包都用它签。
+cp tool/android/dsh-chat.jks android/app/dsh-chat.jks
+if grep -q 'dsh-chat.jks' "$GRADLE"; then
+  echo "签名已配置过"
+elif [ "${GRADLE##*.}" = "kts" ]; then
+  perl -0pi -e 's#(\n\s*buildTypes\s*\{)#\n    signingConfigs {\n        create("release") {\n            storeFile = file("dsh-chat.jks")\n            storePassword = "dshchat2026"\n            keyAlias = "dsh-chat"\n            keyPassword = "dshchat2026"\n        }\n    }\n$1#' "$GRADLE"
+  perl -0pi -e 's#signingConfig = signingConfigs\.getByName\("debug"\)#signingConfig = signingConfigs.getByName("release")#' "$GRADLE"
+  echo "已配置 release 签名（dsh-chat.jks）"
+else
+  echo "⚠️ 不是 build.gradle.kts，签名补丁没打" >&2
+fi
+
 echo "--- AndroidManifest 关键行 ---"
 grep -E 'RECORD_AUDIO|INTERNET|POST_NOTIFICATIONS|FOREGROUND_SERVICE|usesCleartextTraffic|ChatService' "$MANIFEST"
 echo "--- compileSdk ---"

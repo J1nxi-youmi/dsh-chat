@@ -35,7 +35,9 @@ jobs:
       - name: Build APK
         run: |
           set -o pipefail
-          flutter build apk --release 2>&1 | tee build.log
+          echo "commit: $GITHUB_SHA" > build.log
+          date >> build.log
+          flutter build apk --release 2>&1 | tee -a build.log
 
       - name: Save logs to ci-logs branch
         if: always()

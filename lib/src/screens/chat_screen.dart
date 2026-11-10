@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,11 +21,17 @@ class ChatScreen extends StatefulWidget {
     required this.api,
     required this.conversationId,
     required this.title,
+    this.embedded = false,
+    this.onTitleChanged,
   });
 
   final ChatApi api;
   final String conversationId;
   final String title;
+
+  /// 嵌在桌面端三栏里时不要自己的 AppBar/Scaffold。
+  final bool embedded;
+  final ValueChanged<String>? onTitleChanged;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -32,8 +39,17 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final _input = TextEditingController();
+  final _inputFocus = FocusNode();
   final _scroll = ScrollController();
   final _recorder = AudioRecorder();
+
+  bool get _isDesktop => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
+  /// 长按录音的状态：按下的位置、是否已经上滑取消。
+  Offset? _recordPointer;
+  bool _recordCancelled = false;
+  bool _recordStarting = false;
+  bool _recordReleasedBeforeStart = false;
 
   List<Message> _messages = const [];
   final List<Attachment> _pending = [];
@@ -73,6 +89,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _ticker?.cancel();
     _recorder.dispose();
     _input.dispose();
+    _inputFocus.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -160,11 +177,11 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<void> _pickFiles() async {
+  Future<void> _pickFiles({bool imagesOnly = false}) async {
     try {
       // file_picker 13.x：pickFiles 直接返回 List<PlatformFile>（多选默认开），
       // 字节要自己 readAsBytes()，没有 withData 参数了。
-      final files = await FilePicker.pickFiles();
+      final files = await FilePicker.pickFiles(type: imagesOnly ? FileType.image : FileType.any);
       for (final file in files) {
         final bytes = await file.readAsBytes();
         if (bytes.length > 12 * 1024 * 1024) {
@@ -188,33 +205,51 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _toggleRecording() async {
-    if (_recording) {
-      await _stopRecording();
-      return;
-    }
+  // ---------------------------------------------------------------- 长按说话
+
+  Future<void> _startRecording() async {
+    if (_recording || _recordStarting) return;
+    _recordStarting = true;
+    _recordReleasedBeforeStart = false;
     if (!await _recorder.hasPermission()) {
+      _recordStarting = false;
       _toast('没有麦克风权限');
       return;
     }
     final dir = await getTemporaryDirectory();
     final path = '${dir.path}/voice-${DateTime.now().millisecondsSinceEpoch}.wav';
-    await _recorder.start(
-      const RecordConfig(encoder: AudioEncoder.wav, sampleRate: 16000, numChannels: 1),
-      path: path,
-    );
+    try {
+      await _recorder.start(
+        const RecordConfig(encoder: AudioEncoder.wav, sampleRate: 16000, numChannels: 1),
+        path: path,
+      );
+    } catch (error) {
+      _recordStarting = false;
+      _toast('录音启动失败：$error');
+      return;
+    }
+    _recordStarting = false;
+    if (!mounted) return;
     setState(() {
       _recording = true;
       _recordStarted = DateTime.now();
       _recorded = Duration.zero;
+      _recordCancelled = false;
     });
     _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) {
       if (!mounted || _recordStarted == null) return;
       setState(() => _recorded = DateTime.now().difference(_recordStarted!));
     });
+    // 手快：按下还没启动好就松开了，直接当取消。
+    if (_recordReleasedBeforeStart) {
+      _recordReleasedBeforeStart = false;
+      await _finishRecording(send: false);
+    }
   }
 
-  Future<void> _stopRecording() async {
+  /// [send] 为 false 表示上滑取消了，录到的内容直接丢掉。
+  Future<void> _finishRecording({required bool send}) async {
+    if (!_recording) return;
     final path = await _recorder.stop();
     _ticker?.cancel();
     final duration = _recorded.inMilliseconds / 1000;
@@ -222,7 +257,12 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       _recording = false;
       _recorded = Duration.zero;
+      _recordCancelled = false;
     });
+    if (!send) {
+      _toast('已取消');
+      return;
+    }
     if (path == null || duration < 0.5) {
       _toast('太短了，再说长一点');
       return;
@@ -242,6 +282,41 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (error) {
       _toast(error.toString());
     }
+  }
+
+  void _onMicPointerDown(PointerDownEvent event) {
+    _recordPointer = event.position;
+    _startRecording();
+  }
+
+  void _onMicPointerMove(PointerMoveEvent event) {
+    final origin = _recordPointer;
+    if (origin == null || !_recording) return;
+    final dy = event.position.dy - origin.dy;
+    final cancelled = dy < -60;
+    if (cancelled != _recordCancelled) {
+      setState(() => _recordCancelled = cancelled);
+    }
+  }
+
+  void _onMicPointerUp(PointerUpEvent event) {
+    if (_recordPointer == null) return;
+    _recordPointer = null;
+    if (_recordStarting) {
+      _recordReleasedBeforeStart = true;
+      return;
+    }
+    _finishRecording(send: !_recordCancelled);
+  }
+
+  void _onMicPointerCancel(PointerCancelEvent event) {
+    if (_recordPointer == null) return;
+    _recordPointer = null;
+    if (_recordStarting) {
+      _recordReleasedBeforeStart = true;
+      return;
+    }
+    _finishRecording(send: false);
   }
 
   Future<void> _send() async {
@@ -385,6 +460,17 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final body = StarryBackground(
+      child: Column(
+        children: [
+          if (!_connected) _connectionBanner(),
+          Expanded(child: _messageList()),
+          if (_pending.isNotEmpty) _pendingBar(),
+          _composer(),
+        ],
+      ),
+    );
+    if (widget.embedded) return body;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title, overflow: TextOverflow.ellipsis),
@@ -392,16 +478,7 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
         ],
       ),
-      body: StarryBackground(
-        child: Column(
-          children: [
-            if (!_connected) _connectionBanner(),
-            Expanded(child: _messageList()),
-            if (_pending.isNotEmpty) _pendingBar(),
-            _composer(),
-          ],
-        ),
-      ),
+      body: body,
     );
   }
 
@@ -444,10 +521,20 @@ class _ChatScreenState extends State<ChatScreen> {
       itemCount: _messages.length + _outbox.length + (_sending ? 1 : 0),
       itemBuilder: (context, index) {
         if (index < _messages.length) {
-          return MessageBubble(
-            message: _messages[index],
+          final message = _messages[index];
+          final bubble = MessageBubble(
+            message: message,
             mediaUrl: widget.api.mediaUrl,
           );
+          // 跨天或隔了 5 分钟以上，插一条时间分隔。
+          return _needsDivider(index)
+              ? Column(
+                  children: [
+                    _timeDivider(message.at),
+                    bubble,
+                  ],
+                )
+              : bubble;
         }
         final outboxIndex = index - _messages.length;
         if (outboxIndex < _outbox.length) {
@@ -461,6 +548,52 @@ class _ChatScreenState extends State<ChatScreen> {
         }
         return const TypingRow();
       },
+    );
+  }
+
+  bool _needsDivider(int index) {
+    if (index == 0) return true;
+    final previous = _messages[index - 1].at;
+    final current = _messages[index].at;
+    if (previous.year != current.year ||
+        previous.month != current.month ||
+        previous.day != current.day) {
+      return true;
+    }
+    return current.difference(previous).inMinutes >= 5;
+  }
+
+  Widget _timeDivider(DateTime time) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(time.year, time.month, time.day);
+    final String label;
+    if (day == today) {
+      label = '今天';
+    } else if (day == today.subtract(const Duration(days: 1))) {
+      label = '昨天';
+    } else if (time.year == now.year) {
+      label = '${time.month}月${time.day}日';
+    } else {
+      label = '${time.year}年${time.month}月${time.day}日';
+    }
+    final hhmm =
+        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          decoration: BoxDecoration(
+            color: AppTheme.panelAlt.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            '$label $hhmm',
+            style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+          ),
+        ),
+      ),
     );
   }
 
@@ -498,42 +631,190 @@ class _ChatScreenState extends State<ChatScreen> {
           color: AppTheme.panel,
           border: Border(top: BorderSide(color: AppTheme.line)),
         ),
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            RoundButton(icon: Icons.attach_file_rounded, onPressed: _pickFiles),
-            const SizedBox(width: 6),
-            RoundButton(
-              icon: _recording ? Icons.stop_rounded : Icons.mic_none_rounded,
-              color: _recording ? AppTheme.error : null,
-              onPressed: _toggleRecording,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 140),
-                child: TextField(
-                  controller: _input,
-                  minLines: 1,
-                  maxLines: 6,
-                  textInputAction: TextInputAction.newline,
-                  decoration: InputDecoration(
-                    hintText: _recording ? '录音中 ${_recorded.inSeconds}s…' : '说点什么…',
-                    isDense: true,
-                  ),
-                ),
+            if (_recording) _recordingHint(),
+            Container(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              decoration: BoxDecoration(
+                color: AppTheme.panelAlt,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.line),
               ),
-            ),
-            const SizedBox(width: 6),
-            RoundButton(
-              icon: Icons.arrow_upward_rounded,
-              color: AppTheme.accent,
-              onPressed: _sending || !_canSend ? null : _send,
+              child: Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _toolButton(Icons.image_outlined, '发送图片',
+                          () => _pickFiles(imagesOnly: true)),
+                      _toolButton(Icons.attach_file_rounded, '发送文件', _pickFiles),
+                      _micButton(),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 140),
+                          child: Focus(
+                            onKeyEvent: _onComposerKey,
+                            child: TextField(
+                              controller: _input,
+                              focusNode: _inputFocus,
+                              minLines: 1,
+                              maxLines: 6,
+                              textInputAction: TextInputAction.newline,
+                              decoration: InputDecoration(
+                                hintText: _recording ? '录音中…' : '和${widget.title}说点什么…',
+                                isDense: true,
+                                filled: false,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _sendButton(),
+                    ],
+                  ),
+                  if (_isDesktop)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 4, top: 2),
+                        child: Text(
+                          'Enter 发送 · Shift + Enter 换行',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.muted.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _toolButton(IconData icon, String tooltip, VoidCallback onTap) {
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon, size: 21, color: AppTheme.muted),
+      tooltip: tooltip,
+      splashRadius: 18,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+    );
+  }
+
+  /// 按住说话：按下开始，松开发送，上滑取消。
+  Widget _micButton() {
+    return Listener(
+      onPointerDown: _onMicPointerDown,
+      onPointerMove: _onMicPointerMove,
+      onPointerUp: _onMicPointerUp,
+      onPointerCancel: _onMicPointerCancel,
+      child: Tooltip(
+        message: '按住说话（上滑取消）',
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _recording ? AppTheme.error.withValues(alpha: 0.18) : Colors.transparent,
+          ),
+          child: Icon(
+            _recording ? Icons.mic : Icons.mic_none_rounded,
+            size: 21,
+            color: _recording ? AppTheme.error : AppTheme.muted,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sendButton() {
+    final enabled = _canSend && !_sending;
+    return Material(
+      color: enabled ? AppTheme.accent : AppTheme.panelAlt,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: enabled ? _send : null,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: _isDesktop ? 16 : 12, vertical: 9),
+          child: _isDesktop
+              ? Text(
+                  '发送',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: enabled ? Colors.white : AppTheme.muted,
+                  ),
+                )
+              : Icon(
+                  Icons.arrow_upward_rounded,
+                  size: 18,
+                  color: enabled ? Colors.white : AppTheme.muted,
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _recordingHint() {
+    final seconds = _recorded.inMilliseconds / 1000;
+    final color = _recordCancelled ? AppTheme.muted : AppTheme.error;
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _recordCancelled ? Icons.close_rounded : Icons.graphic_eq_rounded,
+              size: 16,
+              color: color,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _recordCancelled
+                  ? '松开取消'
+                  : '录音中 ${seconds.toStringAsFixed(1)}s · 松开发送，上滑取消',
+              style: TextStyle(fontSize: 12, color: color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 桌面端：Enter 发送，Shift+Enter 换行；输入法组词时回车不发送。
+  KeyEventResult _onComposerKey(FocusNode node, KeyEvent event) {
+    if (!_isDesktop) return KeyEventResult.ignored;
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event.logicalKey != LogicalKeyboardKey.enter &&
+        event.logicalKey != LogicalKeyboardKey.numpadEnter) {
+      return KeyEventResult.ignored;
+    }
+    if (HardwareKeyboard.instance.isShiftPressed) return KeyEventResult.ignored;
+    if (_input.value.composing.isValid) return KeyEventResult.ignored;
+    if (_canSend && !_sending) {
+      _send();
+    }
+    return KeyEventResult.handled;
   }
 }

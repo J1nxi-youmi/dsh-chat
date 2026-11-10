@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -5,6 +7,7 @@ import 'src/api.dart';
 import 'src/notify.dart';
 import 'src/screens/connect_screen.dart';
 import 'src/screens/conversations_screen.dart';
+import 'src/screens/desktop_home.dart';
 import 'src/session.dart';
 import 'src/theme.dart';
 
@@ -64,6 +67,10 @@ class _BootState extends State<_Boot> {
         if (!_attached) {
           _attached = true;
           Session.attach(ChatApi(baseUrl: server, token: token));
+        }
+        // Windows / macOS / Linux 走三栏桌面布局，手机走原来的列表+聊天页。
+        if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+          return DesktopHome(api: Session.api!, server: server, token: token);
         }
         return ConversationsScreen(
           api: Session.api!,

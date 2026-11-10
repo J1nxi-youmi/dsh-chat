@@ -134,6 +134,8 @@ class Conversation {
     required this.updatedAt,
     required this.preview,
     required this.messages,
+    this.lastRole = '',
+    this.lastSeq = 0,
   });
 
   final String id;
@@ -141,6 +143,12 @@ class Conversation {
   final DateTime updatedAt;
   final String preview;
   final List<Message> messages;
+
+  /// 最后一条是谁说的：列表里给「我：」前缀用。
+  final String lastRole;
+
+  /// 服务端最后一条消息的 seq：断线重连时当游标。
+  final int lastSeq;
 
   factory Conversation.fromJson(Map<String, dynamic> json) => Conversation(
         id: json['id']?.toString() ?? '',
@@ -152,6 +160,8 @@ class Conversation {
             .whereType<Map<String, dynamic>>()
             .map(Message.fromJson)
             .toList(),
+        lastRole: json['lastRole']?.toString() ?? '',
+        lastSeq: (json['lastSeq'] as num?)?.toInt() ?? 0,
       );
 }
 

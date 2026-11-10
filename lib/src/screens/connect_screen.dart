@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -5,6 +7,7 @@ import '../api.dart';
 import '../session.dart';
 import '../theme.dart';
 import 'conversations_screen.dart';
+import 'desktop_home.dart';
 
 /// 第一次打开：填要连的那台 DSH 上的聊天服务地址 + 令牌。
 class ConnectScreen extends StatefulWidget {
@@ -56,7 +59,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => ConversationsScreen(api: api, server: server, token: token),
+          builder: (_) => Platform.isWindows || Platform.isLinux || Platform.isMacOS
+              ? DesktopHome(api: api, server: server, token: token)
+              : ConversationsScreen(api: api, server: server, token: token),
         ),
       );
     } catch (error) {

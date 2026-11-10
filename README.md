@@ -7,18 +7,30 @@
 
 ## 直接下载
 
-`main` 每次提交 CI 都会自动覆盖这两个文件（免登录）：
+`main` 每次提交 CI 都会自动覆盖这几个文件（免登录）：
 
 | 平台 | 链接 | 说明 |
 |---|---|---|
 | Android | <https://github.com/J1nxi-youmi/dsh-chat/releases/latest/download/dsh-chat.apk> | 传到手机装，允许「安装未知来源」 |
-| Windows | <https://github.com/J1nxi-youmi/dsh-chat/releases/latest/download/dsh-chat-windows.zip> | 解压后跑 `dsh_chat.exe` |
+| Windows（安装包） | <https://github.com/J1nxi-youmi/dsh-chat/releases/latest/download/dsh-chat-setup.exe> | 双击安装，可改安装位置、自动建桌面快捷方式 |
+| Windows（便携） | <https://github.com/J1nxi-youmi/dsh-chat/releases/latest/download/dsh-chat-windows.zip> | 解压后跑 `dsh_chat.exe` |
 
-## 长什么样
+> 安装包用固定的 keystore 签名（`tool/android/dsh-chat.jks`），所以 Android 以后可以直接覆盖安装；
+> 第一次从旧版本（debug 签名）换过来需要先卸载一次。
+
+## 长什么样（桌面端）
+
+- 三栏：图标栏 + 会话列表（搜索 / 预览 / 时间）+ 聊天区
+- Enter 发送，Shift + Enter 换行
+- 文件直接拖进聊天框；Ctrl+V 粘贴图片或文件
+- 语音按住说话，松开发送，上滑取消
+- 单文件上限 96MB
+
+## 长什么样（手机端）
 
 - 深色主题，会话列表 + 气泡对话
 - 图片点开大图，链接点开浏览器，文件点开系统程序
-- 语音按一下录、再按一下发，气泡里点播放
+- 语音按住说话、点气泡播放
 - 断线自动重连（SSE），回复一条条冒出来
 
 ## 自己构建（不用装 Android SDK / Visual Studio）
@@ -81,4 +93,4 @@ tool/patch_windows.ps1          CI 里给生成的 CMakeLists 加 MSVC 兼容宏
 - iOS 还没做；需要 macOS + Xcode 才能编。
 - 语音是「发语音条」，模型听到的是转写文字（后端配了 ASR 才有，没配就只有「语音，约 N 秒」）。
 - 附件走 HTTP 直连；如果后端只走中转，图片/语音暂时拿不到。
-- 大文件上限 12MB（跟服务端一致）。
+- 大文件上限 96MB（跟服务端一致，`config.json` 里可调 `maxUploadBytes`）。

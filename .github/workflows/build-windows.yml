@@ -66,6 +66,35 @@ jobs:
         if: success()
         run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dsh-chat-windows.zip -Force
 
+      # 用 Inno Setup 出安装包：可选安装目录、桌面快捷方式、开始菜单、卸载。
+      - name: Build installer
+        if: success()
+        shell: pwsh
+        run: |
+          $candidates = @(
+            "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+            "C:\Program Files\Inno Setup 6\ISCC.exe",
+            "C:\Program Files (x86)\Inno Setup 7\ISCC.exe",
+            "C:\Program Files\Inno Setup 7\ISCC.exe"
+          )
+          $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup --no-progress -y
+            $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $iscc) { throw "找不到 ISCC.exe" }
+          Write-Host "ISCC: $iscc"
+          & $iscc "/DAppVersion=${{ github.run_number }}" "installer\windows.iss"
+          if ($LASTEXITCODE -ne 0) { throw "ISCC 失败（$LASTEXITCODE）" }
+          Get-ChildItem dist
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: dsh-chat-installer
+          path: dist/dsh-chat-setup.exe
+          if-no-files-found: error
+
       - name: Publish Windows build to release
         if: success()
         continue-on-error: true
@@ -76,6 +105,6 @@ jobs:
           gh release view latest-build >/dev/null 2>&1 \
             || gh release create latest-build \
                  --title "最新构建" \
-                 --notes "main 每次提交自动覆盖：dsh-chat.apk（Android）、dsh-chat-windows.zip（Windows）" \
+                 --notes "main 每次提交自动覆盖：dsh-chat.apk（Android）、dsh-chat-windows.zip（Windows 便携版）、dsh-chat-setup.exe（Windows 安装包）" \
                  || true
-          gh release upload latest-build dsh-chat-windows.zip --clobber
+          gh release upload latest-build dsh-chat-windows.zip dist/dsh-chat-setup.exe --clobber

@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pasteboard/pasteboard.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -50,6 +52,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _recordCancelled = false;
   bool _recordStarting = false;
   bool _recordReleasedBeforeStart = false;
+  bool _dragging = false;
 
   List<Message> _messages = const [];
   final List<Attachment> _pending = [];
@@ -177,6 +180,9 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  /// 单个附件上限，和服务端保持一致。
+  static const _maxUploadBytes = 96 * 1024 * 1024;
+
   Future<void> _pickFiles({bool imagesOnly = false}) async {
     try {
       // file_picker 13.x：pickFiles 直接返回 List<PlatformFile>（多选默认开），
@@ -184,24 +190,84 @@ class _ChatScreenState extends State<ChatScreen> {
       final files = await FilePicker.pickFiles(type: imagesOnly ? FileType.image : FileType.any);
       for (final file in files) {
         final bytes = await file.readAsBytes();
-        if (bytes.length > 12 * 1024 * 1024) {
-          _toast('${file.name} 超过 12MB');
-          continue;
-        }
-        final mime = _guessMime(file.name);
-        final isImage = mime.startsWith('image/');
-        final attachment = await widget.api.upload(
-          name: file.name,
-          mime: mime,
-          bytes: bytes,
-          kind: isImage ? 'image' : 'file',
-          textPreview: _isText(file.name) ? String.fromCharCodes(bytes.take(4000)) : null,
-        );
-        if (!mounted) return;
-        setState(() => _pending.add(attachment));
+        await _uploadBytes(name: file.name, mime: _guessMime(file.name), bytes: bytes);
       }
     } catch (error) {
       _toast(error.toString());
+    }
+  }
+
+  /// 统一的「拿到字节就上传」入口：选文件、拖文件、粘贴图片都走这里。
+  Future<bool> _uploadBytes({
+    required String name,
+    required String mime,
+    required Uint8List bytes,
+    String? kind,
+  }) async {
+    if (bytes.length > _maxUploadBytes) {
+      _toast('$name 超过 96MB');
+      return false;
+    }
+    try {
+      final isImage = mime.startsWith('image/');
+      final attachment = await widget.api.upload(
+        name: name,
+        mime: mime,
+        bytes: bytes,
+        kind: kind ?? (isImage ? 'image' : 'file'),
+        textPreview: _isText(name) ? String.fromCharCodes(bytes.take(4000)) : null,
+      );
+      if (!mounted) return true;
+      setState(() => _pending.add(attachment));
+      return true;
+    } catch (error) {
+      _toast(error.toString());
+      return false;
+    }
+  }
+
+  /// 拖进来的文件（桌面端）。
+  Future<void> _handleDropped(DropDoneDetails details) async {
+    if (!mounted) return;
+    setState(() => _dragging = false);
+    for (final file in details.files) {
+      try {
+        final bytes = await file.readAsBytes();
+        await _uploadBytes(
+          name: file.name.isEmpty ? '拖入文件' : file.name,
+          mime: file.mimeType ?? _guessMime(file.name),
+          bytes: bytes,
+        );
+      } catch (error) {
+        _toast('读取拖入的文件失败：$error');
+      }
+    }
+  }
+
+  /// Ctrl+V：先看剪贴板里有没有图片，再看有没有复制的文件。
+  Future<void> _pasteFromClipboard() async {
+    try {
+      final image = await Pasteboard.image;
+      if (image != null && image.isNotEmpty) {
+        await _uploadBytes(
+          name: '粘贴的图片-${DateTime.now().millisecondsSinceEpoch}.png',
+          mime: 'image/png',
+          bytes: image,
+        );
+        return;
+      }
+      final files = await Pasteboard.files();
+      for (final path in files) {
+        final file = File(path);
+        if (!await file.exists()) continue;
+        await _uploadBytes(
+          name: file.uri.pathSegments.isEmpty ? '粘贴的文件' : file.uri.pathSegments.last,
+          mime: _guessMime(path),
+          bytes: await file.readAsBytes(),
+        );
+      }
+    } catch (_) {
+      /* 剪贴板里没东西就算了 */
     }
   }
 
@@ -470,7 +536,21 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
-    if (widget.embedded) return body;
+    // 桌面端：整块聊天区都能接住拖进来的文件。
+    final content = _isDesktop
+        ? DropTarget(
+            onDragEntered: (_) => setState(() => _dragging = true),
+            onDragExited: (_) => setState(() => _dragging = false),
+            onDragDone: _handleDropped,
+            child: Stack(
+              children: [
+                body,
+                if (_dragging) _dropOverlay(),
+              ],
+            ),
+          )
+        : body;
+    if (widget.embedded) return content;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title, overflow: TextOverflow.ellipsis),
@@ -478,7 +558,25 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
         ],
       ),
-      body: body,
+      body: content,
+    );
+  }
+
+  Widget _dropOverlay() {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.accent.withValues(alpha: 0.10),
+            border: Border.all(color: AppTheme.accent.withValues(alpha: 0.7), width: 2),
+          ),
+          alignment: Alignment.center,
+          child: const Text(
+            '松开，把文件发给她',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.text),
+          ),
+        ),
+      ),
     );
   }
 
@@ -700,7 +798,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: Padding(
                         padding: const EdgeInsets.only(right: 4, top: 2),
                         child: Text(
-                          'Enter 发送 · Shift + Enter 换行',
+                          'Enter 发送 · Shift + Enter 换行 · 可拖入文件 · Ctrl+V 粘贴',
                           style: TextStyle(
                             fontSize: 11,
                             color: AppTheme.muted.withValues(alpha: 0.8),
@@ -804,10 +902,19 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// 桌面端：Enter 发送，Shift+Enter 换行；输入法组词时回车不发送。
+  /// 桌面端：Enter 发送，Shift+Enter 换行；Ctrl/Cmd+V 粘贴图片或文件。
   KeyEventResult _onComposerKey(FocusNode node, KeyEvent event) {
     if (!_isDesktop) return KeyEventResult.ignored;
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    // 粘贴：剪贴板里有图/文件就上传；纯文字仍然交给输入框自己粘。
+    if (event.logicalKey == LogicalKeyboardKey.keyV &&
+        (HardwareKeyboard.instance.isControlPressed ||
+            HardwareKeyboard.instance.isMetaPressed)) {
+      unawaited(_pasteFromClipboard());
+      return KeyEventResult.ignored;
+    }
+
     if (event.logicalKey != LogicalKeyboardKey.enter &&
         event.logicalKey != LogicalKeyboardKey.numpadEnter) {
       return KeyEventResult.ignored;

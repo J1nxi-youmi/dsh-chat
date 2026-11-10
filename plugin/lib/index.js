@@ -1,3 +1,4 @@
+import z from '@deepseek-ai/schemastery';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -10,6 +11,24 @@ export const name = 'chat';
 /** 二合一：聊天服务自己跑 DSH 会话，所以要模型和会话注册表。 */
 export const inject = ['llm', 'agents'];
 
+/** 插件配置表：DSH 的「插件 → 设置」页就是按它渲染的。 */
+export const Config = z.object({
+  host: z.string().default('0.0.0.0').description('监听地址；只给本机用填 localhost'),
+  port: z.natural().min(1).max(65535).default(8792).description('聊天服务端口，App 连这个'),
+  token: z.string().default('').description('访问令牌；App 里要填同一个，留空会自动生成'),
+  baseUrl: z.string().default('').description('留空 = 用插件自带的桥；填了就转发给这个 OpenAI 兼容地址'),
+  apiKey: z.string().default('').description('baseUrl 对应的令牌'),
+  bridgePort: z.natural().min(1).max(65535).default(8790).description('内置桥在本机的端口'),
+  sessionKey: z.union([z.const('fixed'), z.const('auto'), z.const('model')]).default('fixed').description('fixed：所有聊天共用一条会话（默认）；auto：按角色设定分；model：按 model 字段分'),
+  sessionId: z.string().default('').description('想写进已有会话就填它的 id；留空会自动建一条并一直复用'),
+  mode: z.union([z.const('chat'), z.const('agent')]).default('chat').description('chat 只走模型通道；agent 会开真实会话、能调工具'),
+  persona: z.union([z.const('dsh'), z.const('starlit')]).default('dsh').description('agent 模式下是否注入星伴人设'),
+  tools: z.boolean().default(false).description('agent 模式下是否放开工具'),
+  relayUrl: z.string().default('').description('中转地址（跨网用，可留空）'),
+  relayRoom: z.string().default('').description('中转房间'),
+  relayKey: z.string().default('').description('中转密钥'),
+});
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
 const SERVER = join(ROOT, 'server.mjs');
@@ -18,7 +37,7 @@ const HOST = join(ROOT, 'relay', 'host.mjs');
 /**
  * dsh-chat：聊天 App 的后端（网页端 + HTTP API），自带「跑 DSH 会话」的桥。
  *
- * - 不填 `baseUrl`：插件内部起一座桥（默认 127.0.0.1:8790），把对话交给
+ * - 不填 `baseUrl`：插件内部起一座桥（只监听本机回环），把对话交给
  *   指定的 DSH 会话跑，不需要再装 `dsh-plugin-starlit-bridge`；
  * - 填了 `baseUrl`：照旧转发给任意 OpenAI 兼容后端（保留旧用法）。
  *

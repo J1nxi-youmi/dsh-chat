@@ -64,7 +64,7 @@ App 第一次打开会要两样东西：
 
 在 DSH 那台机器上**只装一个插件**：本仓库的 [`plugin/`](plugin/README.md)（`dsh-plugin-chat`）。
 
-- 它自带一个 OpenAI 兼容的桥（`127.0.0.1:8790`），把聊天直接跑成这条 DSH 里的一轮；
+- 它自带一个 OpenAI 兼容的桥（只监听本机回环，端口可在配置里改），把聊天直接跑成这条 DSH 里的一轮；
   不用再单独装 `dsh-plugin-starlit-bridge`（已经合并进来了）；
 - 所有聊天默认写进**同一条会话**（`sessionKey: fixed`）。想写进某条已有会话，
   把它的会话 id 填到插件配置的 `sessionId` 里；留空则自动建一条并一直复用；

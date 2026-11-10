@@ -1,7 +1,7 @@
 # 聊天 App 的后端（二合一）：网页聊天端 + DSH 会话桥。
 #
 # 不再需要单独装 dsh-plugin-starlit-bridge：
-#   baseUrl 留空 → 插件内部起一座桥（127.0.0.1:8790），直接跑这条 DSH 里的会话；
+#   baseUrl 留空 → 插件内部起一座桥（只监听本机回环），直接跑这条 DSH 里的会话；
 #   baseUrl 填了 → 照旧转发给任意 OpenAI 兼容后端。
 #
 # 想写进「已有会话」而不是新建：把会话 id 填到 sessionId（sessionKey 保持 fixed）。

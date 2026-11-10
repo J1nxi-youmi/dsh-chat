@@ -1,4 +1,4 @@
-﻿# Flutter / Dart
+# Flutter / Dart
 .dart_tool/
 .packages
 build/
@@ -9,6 +9,7 @@ pubspec.lock
 # 生成出来的安卓工程（CI 里现生成）
 android/
 ios/
+windows/
 
 # 编辑器
 .idea/

@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -20,10 +23,33 @@ jobs:
       - name: Generate windows project
         run: flutter create --platforms=windows --project-name dsh_chat .
 
+      # 模板 test 引用 MyApp，和本项目无关
+      - name: Drop template test
+        run: Remove-Item -Force test/widget_test.dart -ErrorAction SilentlyContinue
+
       - run: flutter pub get
-      - run: flutter build windows --release
+
+      # 把构建输出落到 windows.log 并推到 ci-logs-win 分支，
+      # 这样 MSVC / CMake 的报错能直接在网上看（Actions 原始日志要登录）。
+      - name: Build Windows
+        run: |
+          "commit: $env:GITHUB_SHA" | Out-File -Encoding utf8 windows.log
+          (Get-Date).ToUniversalTime().ToString("u") | Out-File -Encoding utf8 -Append windows.log
+          flutter build windows --release 2>&1 | Tee-Object -FilePath windows.log -Append
+
+      - name: Save log to ci-logs-win branch
+        if: always()
+        shell: bash
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git checkout -B ci-logs-win
+          git add -f windows.log 2>/dev/null || true
+          git commit -m "windows logs ${{ github.run_id }} ${{ github.sha }}" || true
+          git push -f origin ci-logs-win || true
 
       - uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: dsh-chat-windows
           path: build/windows/x64/runner/Release/

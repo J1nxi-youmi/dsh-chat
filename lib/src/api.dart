@@ -63,6 +63,12 @@ class ChatApi {
     try {
       data = text.isEmpty ? null : jsonDecode(text);
     } catch (_) {
+      final lower = text.toLowerCase();
+      // Cloudflare 的 1033 = 隧道没开 / 主机名没接上，不是服务端坏了。
+      if (lower.contains('error code: 1033') || lower.contains('cloudflare')) {
+        throw ApiError('隧道没开，或者地址已经过期（Cloudflare 1033）。'
+            '重新启动隧道会拿到新地址，记得回来改这里。');
+      }
       throw ApiError('服务返回的不是 JSON：${text.length > 120 ? text.substring(0, 120) : text}');
     }
     if (response.statusCode >= 400 || (data is Map && data['ok'] == false)) {

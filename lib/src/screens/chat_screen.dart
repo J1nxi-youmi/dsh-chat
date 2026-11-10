@@ -76,6 +76,8 @@ class _ChatScreenState extends State<ChatScreen> {
     _connected = widget.api.connected.value;
     widget.api.connected.addListener(_onConnection);
     _input.addListener(_onInputChanged);
+    // 全局监听 Ctrl/Cmd+V：文本框自己也会处理文字粘贴，这里只额外抓图片/文件。
+    HardwareKeyboard.instance.addHandler(_onGlobalKey);
     _loadOutbox();
     _load();
     _events = widget.api.events.listen(_onEvent);
@@ -83,6 +85,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onGlobalKey);
     if (activeConversationId.value == widget.conversationId) {
       activeConversationId.value = null;
     }
@@ -95,6 +98,18 @@ class _ChatScreenState extends State<ChatScreen> {
     _inputFocus.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// 桌面端 Ctrl/Cmd+V：剪贴板里有图片/文件就上传；文字照旧由输入框粘贴。
+  bool _onGlobalKey(KeyEvent event) {
+    if (!_isDesktop || event is! KeyDownEvent) return false;
+    if (event.logicalKey != LogicalKeyboardKey.keyV) return false;
+    if (!HardwareKeyboard.instance.isControlPressed &&
+        !HardwareKeyboard.instance.isMetaPressed) {
+      return false;
+    }
+    unawaited(_pasteFromClipboard());
+    return false;
   }
 
   bool get _canSend => _input.text.trim().isNotEmpty || _pending.isNotEmpty;
@@ -226,20 +241,60 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  /// 拖进来的文件（桌面端）。
+  /// 拖进来的文件（桌面端）。拖文件夹的话把里面的文件逐个发出去。
   Future<void> _handleDropped(DropDoneDetails details) async {
     if (!mounted) return;
     setState(() => _dragging = false);
     for (final file in details.files) {
       try {
+        final path = file.path;
+        if (path.isNotEmpty && Directory(path).existsSync()) {
+          await _uploadDirectory(Directory(path));
+          continue;
+        }
         final bytes = await file.readAsBytes();
         await _uploadBytes(
           name: file.name.isEmpty ? '拖入文件' : file.name,
           mime: file.mimeType ?? _guessMime(file.name),
           bytes: bytes,
         );
+      } on PathAccessException catch (error) {
+        _toast('这个路径读不了（${error.path ?? '未知'}），可能没权限');
       } catch (error) {
         _toast('读取拖入的文件失败：$error');
+      }
+    }
+  }
+
+  /// 拖进来的文件夹：递归收集文件，最多 30 个，逐个上传。
+  Future<void> _uploadDirectory(Directory directory) async {
+    final files = <File>[];
+    try {
+      await for (final entity in directory.list(recursive: true, followLinks: false)) {
+        if (entity is File) files.add(entity);
+      }
+    } catch (error) {
+      _toast('读取文件夹失败：$error');
+      return;
+    }
+    if (files.isEmpty) {
+      _toast('文件夹是空的');
+      return;
+    }
+    if (files.length > 30) {
+      _toast('文件夹里文件太多（${files.length} 个），一次最多 30 个');
+      return;
+    }
+    for (final file in files) {
+      try {
+        final name = file.uri.pathSegments.last;
+        await _uploadBytes(
+          name: name,
+          mime: _guessMime(name),
+          bytes: await file.readAsBytes(),
+        );
+      } catch (error) {
+        _toast('跳过 ${file.path}：$error');
       }
     }
   }
@@ -257,17 +312,20 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
       final files = await Pasteboard.files();
+      var uploaded = 0;
       for (final path in files) {
         final file = File(path);
         if (!await file.exists()) continue;
-        await _uploadBytes(
+        final ok = await _uploadBytes(
           name: file.uri.pathSegments.isEmpty ? '粘贴的文件' : file.uri.pathSegments.last,
           mime: _guessMime(path),
           bytes: await file.readAsBytes(),
         );
+        if (ok) uploaded += 1;
       }
-    } catch (_) {
-      /* 剪贴板里没东西就算了 */
+      if (uploaded == 0) _toast('剪贴板里没有图片或文件');
+    } catch (error) {
+      _toast('读取剪贴板失败：$error');
     }
   }
 
@@ -902,19 +960,10 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// 桌面端：Enter 发送，Shift+Enter 换行；Ctrl/Cmd+V 粘贴图片或文件。
+  /// 桌面端：Enter 发送，Shift+Enter 换行（Ctrl+V 由全局键盘监听处理）。
   KeyEventResult _onComposerKey(FocusNode node, KeyEvent event) {
     if (!_isDesktop) return KeyEventResult.ignored;
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-
-    // 粘贴：剪贴板里有图/文件就上传；纯文字仍然交给输入框自己粘。
-    if (event.logicalKey == LogicalKeyboardKey.keyV &&
-        (HardwareKeyboard.instance.isControlPressed ||
-            HardwareKeyboard.instance.isMetaPressed)) {
-      unawaited(_pasteFromClipboard());
-      return KeyEventResult.ignored;
-    }
-
     if (event.logicalKey != LogicalKeyboardKey.enter &&
         event.logicalKey != LogicalKeyboardKey.numpadEnter) {
       return KeyEventResult.ignored;

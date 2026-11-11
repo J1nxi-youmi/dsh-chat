@@ -50,6 +50,10 @@ jobs:
 
       - run: flutter pub get
 
+      # 用 assets/app_icon.png 生成 Android 图标（含自适应图标）
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+
       - name: Analyze
         run: flutter analyze > analyze.log 2>&1 || true
 
@@ -101,6 +105,10 @@ jobs:
         run: pwsh -NoProfile -ExecutionPolicy Bypass -File tool/patch_windows.ps1
 
       - run: flutter pub get
+
+      # 生成 Windows 图标（app_icon.ico + Runner.rc）
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
 
       - name: Build Windows
         run: |

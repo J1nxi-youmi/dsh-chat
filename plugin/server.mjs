@@ -492,6 +492,40 @@ async function handleApi(req, res, url) {
     return json(res, 200, { ok: true, conversationId: conversation.id, message });
   }
 
+  // 「我的资料」：昵称 + 头像，App 各端连上来自动同步。
+  if (path === '/api/profile') {
+    const profileFile = join(config.dataDir, 'profile.json');
+    if (req.method === 'GET') {
+      let saved = {};
+      try {
+        saved = JSON.parse(await readFile(profileFile, 'utf8'));
+      } catch {
+        /* 没有就给空的 */
+      }
+      return json(res, 200, {
+        ok: true,
+        profile: {
+          nickname: typeof saved.nickname === 'string' ? saved.nickname : '',
+          avatarUrl: typeof saved.avatarUrl === 'string' ? saved.avatarUrl : '',
+        },
+      });
+    }
+    if (req.method === 'POST') {
+      const body = await readJson(req, 64 * 1024);
+      let saved = {};
+      try {
+        saved = JSON.parse(await readFile(profileFile, 'utf8'));
+      } catch {
+        /* 没有就新建 */
+      }
+      if (typeof body.nickname === 'string') saved.nickname = body.nickname.slice(0, 60);
+      if (typeof body.avatarUrl === 'string') saved.avatarUrl = body.avatarUrl.slice(0, 500);
+      await mkdir(dirname(profileFile), { recursive: true });
+      await writeFile(profileFile, JSON.stringify(saved, null, 2));
+      return json(res, 200, { ok: true, profile: saved });
+    }
+  }
+
   // 网页端的「设置」：只改聊天侧这几项，改完立即生效并写回 config.json。
   if (path === '/api/settings') {
     if (req.method === 'GET') {

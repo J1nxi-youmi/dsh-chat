@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -124,20 +122,14 @@ class _DesktopHomeState extends State<DesktopHome> {
     }
   }
 
-  ImageProvider? _avatarImage(AppProfile profile) {
-    final path = profile.avatarPath;
-    if (path == null || !File(path).existsSync()) return null;
-    return FileImage(File(path));
-  }
-
   void _openProfile() {
-    showDialog<void>(context: context, builder: (_) => const ProfileDialog());
+    showDialog<void>(context: context, builder: (_) => ProfileDialog(api: widget.api));
   }
 
   void _openSettings() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => SettingsScreen(server: widget.server, token: widget.token),
+        builder: (_) => SettingsScreen(server: widget.server, token: widget.token, api: widget.api),
       ),
     );
   }
@@ -213,7 +205,7 @@ class _DesktopHomeState extends State<DesktopHome> {
               return AvatarBadge(
                 name: profile.displayName,
                 size: 36,
-                image: _avatarImage(profile),
+                image: profile.avatarImage,
                 onTap: _openProfile,
               );
             },

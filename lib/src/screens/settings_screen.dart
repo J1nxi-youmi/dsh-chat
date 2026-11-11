@@ -4,15 +4,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme.dart';
 import '../update.dart';
 import 'connect_screen.dart';
+import '../api.dart';
 import 'profile_dialog.dart';
 import 'version_screen.dart';
 
 /// 设置页：服务器、版本（点进去才有更新弹窗）、更新源、换一台 DSH。
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.server, required this.token});
+  const SettingsScreen({
+    super.key,
+    required this.server,
+    required this.token,
+    required this.api,
+  });
 
   final String server;
   final String token;
+  final ChatApi api;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -93,7 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: const Text('头像和昵称，只保存在这台设备'),
               onTap: () => showDialog<void>(
                 context: context,
-                builder: (_) => const ProfileDialog(),
+                builder: (_) => ProfileDialog(api: widget.api),
               ),
             ),
             ListTile(

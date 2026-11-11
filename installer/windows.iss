@@ -7,7 +7,7 @@
   #define AppVersion "0.1.0"
 #endif
 
-#define AppName "dsh-chat"
+#define AppName "Dshchat"
 #define AppExe "dsh_chat.exe"
 
 [Setup]
@@ -17,7 +17,7 @@ AppVersion={#AppVersion}
 AppPublisher=dsh
 AppPublisherURL=https://github.com/J1nxi-youmi/dsh-chat
 DefaultDirName={autopf}\dsh-chat
-DefaultGroupName=dsh-chat
+DefaultGroupName=Dshchat
 DisableProgramGroupPage=yes
 OutputDir=..\dist
 OutputBaseFilename=dsh-chat-setup

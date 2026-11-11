@@ -42,6 +42,10 @@ GRADLE=android/app/build.gradle.kts
 [ -f "$GRADLE" ] || GRADLE=android/app/build.gradle
 
 perl -0pi -e 's/compileSdk\s*=\s*flutter\.compileSdkVersion/compileSdk = 36/' "$GRADLE"
+
+# --- 应用名 ---
+# 桌面图标下面显示的名字改成 Dshchat。
+perl -0pi -e 's/android:label="[^"]*"/android:label="Dshchat"/' "$MANIFEST"
 perl -0pi -e 's/compileSdkVersion\s+flutter\.compileSdkVersion/compileSdkVersion 36/' "$GRADLE"
 
 # --- 关掉 release lint（lintVital）---

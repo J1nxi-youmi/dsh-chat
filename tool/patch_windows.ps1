@@ -38,3 +38,15 @@ if ($text -match [regex]::Escape($define)) {
 
 Write-Host '--- windows/CMakeLists.txt 前 10 行 ---'
 Get-Content -LiteralPath $cmake -TotalCount 10 | ForEach-Object { "  | $_" }
+
+# --- 窗口标题 ---
+# flutter create 生成的标题是项目名（dsh_chat），统一改成 Dshchat。
+$mainCpp = Join-Path (Split-Path -Parent $PSScriptRoot) 'windows/runner/main.cpp'
+if (Test-Path -LiteralPath $mainCpp) {
+    $mt = [System.IO.File]::ReadAllText($mainCpp)
+    $patched = [regex]::Replace($mt, '(Create\(L")[^"]+(")', '$1Dshchat$2')
+    if ($patched -ne $mt) {
+        [System.IO.File]::WriteAllText($mainCpp, $patched, (New-Object System.Text.UTF8Encoding($false)))
+        Write-Host "窗口标题已改为 Dshchat"
+    }
+}

@@ -3,10 +3,12 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api.dart';
+import '../profile.dart';
 import '../models.dart';
 import '../theme.dart';
 import 'chat_screen.dart';
 import 'connect_screen.dart';
+import 'profile_dialog.dart';
 import 'settings_screen.dart';
 
 class ConversationsScreen extends StatefulWidget {
@@ -121,13 +123,32 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('聊天'),
+        title: Row(
+          children: [
+            AnimatedBuilder(
+              animation: AppProfile.instance,
+              builder: (context, _) => GestureDetector(
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => ProfileDialog(api: widget.api),
+                ),
+                child: AvatarBadge(
+                  name: AppProfile.instance.displayName,
+                  size: 34,
+                  image: AppProfile.instance.avatarImage,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text('聊天'),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: '设置',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => SettingsScreen(server: widget.server, token: widget.token),
+                builder: (_) => SettingsScreen(server: widget.server, token: widget.token, api: widget.api),
               ),
             ),
             icon: const Icon(Icons.settings_outlined),

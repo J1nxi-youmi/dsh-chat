@@ -19,6 +19,7 @@ class Session {
     api = next;
     next.startEvents();
     unawaited(next.refreshLimits());
+    unawaited(next.refreshProfile());
     next.events.listen(_onMessage);
   }
 

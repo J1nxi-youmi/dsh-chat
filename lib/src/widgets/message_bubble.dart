@@ -2,8 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
-import 'dart:io';
-
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models.dart';
@@ -297,11 +295,7 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    ImageProvider? image;
-    if (mine) {
-      final path = AppProfile.instance.avatarPath;
-      if (path != null && File(path).existsSync()) image = FileImage(File(path));
-    }
+    final image = mine ? AppProfile.instance.avatarImage : null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AvatarBadge(

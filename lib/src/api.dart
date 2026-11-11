@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'profile.dart';
+
 import 'package:flutter/foundation.dart';
 
 import 'models.dart';
@@ -173,6 +175,30 @@ class ChatApi {
     } catch (_) {
       /* 拿不到就按默认 96MB */
     }
+  }
+
+  /// 拉「我的资料」（昵称 + 头像），连上服务器后自动同步。
+  Future<void> refreshProfile() async {
+    try {
+      final data = await _send('GET', '/api/profile');
+      final profile = data is Map ? data['profile'] : null;
+      if (profile is! Map) return;
+      final url = (profile['avatarUrl'] ?? '').toString();
+      await AppProfile.instance.applyRemote(
+        nickname: (profile['nickname'] ?? '').toString(),
+        avatarUrl: url.isEmpty ? '' : mediaUrl(url),
+      );
+    } catch (_) {
+      /* 老版本插件没有这个接口，忽略 */
+    }
+  }
+
+  /// 把本机资料推到云端，其它设备连上后自动同步。
+  Future<void> saveProfile({required String nickname, required String avatarUrl}) async {
+    await _send('POST', '/api/profile', {
+      'nickname': nickname,
+      'avatarUrl': avatarUrl,
+    });
   }
 
   /// 连 SSE，断了自己重连。重复调用无副作用。

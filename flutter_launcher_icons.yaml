@@ -1,0 +1,10 @@
+# flutter pub run flutter_launcher_icons 生成各平台图标（CI 里自动跑）。
+flutter_launcher_icons:
+  image_path: "assets/app_icon.png"
+  android: "launcher_icon"
+  adaptive_icon_background: "#16203A"
+  adaptive_icon_foreground: "assets/app_icon.png"
+  windows:
+    generate: true
+    image_path: "assets/app_icon.png"
+    icon_size: 256

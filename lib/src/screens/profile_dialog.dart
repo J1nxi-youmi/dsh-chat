@@ -3,13 +3,16 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../api.dart';
 import '../profile.dart';
 import '../theme.dart';
 
 /// 「我的资料」：点头像换图、改昵称，只保存在这台设备上。
 /// 桌面端从左上角头像打开；手机端在设置页打开。
 class ProfileDialog extends StatefulWidget {
-  const ProfileDialog({super.key});
+  const ProfileDialog({super.key, required this.api});
+
+  final ChatApi api;
 
   @override
   State<ProfileDialog> createState() => _ProfileDialogState();
@@ -18,13 +21,11 @@ class ProfileDialog extends StatefulWidget {
 class _ProfileDialogState extends State<ProfileDialog> {
   late final TextEditingController _name =
       TextEditingController(text: AppProfile.instance.nickname);
-  ImageProvider? _image;
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    final path = AppProfile.instance.avatarPath;
-    if (path != null && File(path).existsSync()) _image = FileImage(File(path));
   }
 
   Future<void> _pick() async {
@@ -33,19 +34,47 @@ class _ProfileDialogState extends State<ProfileDialog> {
     if (path == null) return;
     await AppProfile.instance.setAvatarFromFile(path);
     if (!mounted) return;
-    setState(() => _image = FileImage(File(AppProfile.instance.avatarPath!)));
+    setState(() {});
   }
 
   Future<void> _reset() async {
     await AppProfile.instance.resetAvatar();
     if (!mounted) return;
-    setState(() => _image = null);
+    setState(() {});
   }
 
+  /// 保存：本地生效 + 推到云端（头像传成附件拿 url），其它设备自动同步。
   Future<void> _save() async {
-    await AppProfile.instance.save(nickname: _name.text);
-    if (!mounted) return;
-    Navigator.of(context).pop();
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await AppProfile.instance.save(nickname: _name.text);
+      final nickname = AppProfile.instance.displayName;
+      var avatarUrl = '';
+      final path = AppProfile.instance.avatarPath;
+      if (path != null && File(path).existsSync()) {
+        final bytes = await File(path).readAsBytes();
+        final att = await widget.api.upload(
+          name: 'avatar.png',
+          mime: 'image/png',
+          bytes: bytes,
+          kind: 'file',
+        );
+        avatarUrl = att.url;
+      }
+      await widget.api.saveProfile(nickname: nickname, avatarUrl: avatarUrl);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已保存，其它设备连上后会自动同步')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已存到本机，云端同步失败：$error')),
+      );
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -60,7 +89,7 @@ class _ProfileDialogState extends State<ProfileDialog> {
           Center(
             child: GestureDetector(
               onTap: _pick,
-              child: AvatarBadge(name: _name.text, size: 88, image: _image),
+              child: AvatarBadge(name: _name.text, size: 88, image: AppProfile.instance.avatarImage),
             ),
           ),
           const SizedBox(height: 6),

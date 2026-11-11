@@ -108,21 +108,35 @@ class UpdateService {
     );
   }
 
-  /// Windows：下载安装包并启动；Android：交给浏览器下载 APK。
-  static Future<String> install(UpdateInfo info) async {
+  /// Windows：带进度下载安装包并启动；Android：交给浏览器下载 APK。
+  static Future<String> install(UpdateInfo info, {void Function(double)? onProgress}) async {
     final url = info.downloadUrl;
     if (url == null) throw '这个 release 里没有可下载的文件';
     if (Platform.isWindows && url.toLowerCase().endsWith('.exe')) {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/dsh-chat-setup.exe');
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(minutes: 5));
-      if (response.statusCode != 200) throw '下载失败（HTTP ${response.statusCode}）';
-      await file.writeAsBytes(response.bodyBytes, flush: true);
+      final client = http.Client();
+      try {
+        final request = http.Request('GET', Uri.parse(url));
+        final response = await client.send(request).timeout(const Duration(seconds: 60));
+        if (response.statusCode != 200) throw '下载失败（HTTP ${response.statusCode}）';
+        final total = response.contentLength ?? 0;
+        final sink = file.openWrite();
+        var received = 0;
+        await for (final chunk in response.stream) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (total > 0 && onProgress != null) onProgress(received / total);
+        }
+        await sink.close();
+      } finally {
+        client.close();
+      }
       await Process.start(file.path, const [], mode: ProcessStartMode.detached);
-      return '已下载安装包并开始安装';
+      return '安装包已下载，安装程序已启动';
     }
     final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     if (!ok) throw '打不开下载地址';
-    return '已打开下载页';
+    return '已在浏览器打开下载页';
   }
 }

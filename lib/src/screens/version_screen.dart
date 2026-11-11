@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -36,7 +38,7 @@ class _VersionScreenState extends State<VersionScreen> {
           title: Text('发现新版本 ${info.versionLabel}'),
           content: Text(
             '当前 ${UpdateService.displayVersion}，最新 ${info.versionLabel}。\n\n'
-            '${info.body.split('\n').take(8).join('\n')}',
+            '${_pretty(info.body).split('\n').take(6).join('\n')}',
             style: const TextStyle(height: 1.5, fontSize: 13),
           ),
           actions: [
@@ -49,14 +51,93 @@ class _VersionScreenState extends State<VersionScreen> {
     });
   }
 
+  /// 把 release 正文里最扎眼的 markdown 标记去掉，读起来像正文。
+  String _pretty(String body) {
+    var text = body;
+    text = text.replaceAll(RegExp(r'```[a-zA-Z]*'), '');
+    text = text.replaceAll(RegExp(r'^#{1,6}\s*', multiLine: true), '');
+    text = text.replaceAll('**', '');
+    text = text.replaceAll(RegExp(r'^\s*[-*]\s+', multiLine: true), '· ');
+    return text.trim();
+  }
+
   Future<void> _download(UpdateInfo info) async {
+    final isWindowsInstaller =
+        Platform.isWindows && (info.setupUrl ?? '').toLowerCase().endsWith('.exe');
+    if (!isWindowsInstaller) {
+      try {
+        final message = await UpdateService.install(info);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+      }
+      return;
+    }
+
+    final progress = ValueNotifier<double>(0);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.panel,
+        title: Text('正在下载 ${info.versionLabel}'),
+        content: ValueListenableBuilder<double>(
+          valueListenable: progress,
+          builder: (context, value, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LinearProgressIndicator(value: value == 0 ? null : value),
+              const SizedBox(height: 10),
+              Text(
+                value == 0 ? '连接下载地址…' : '已下载 ${(value * 100).toStringAsFixed(0)}%',
+                style: const TextStyle(fontSize: 12, color: AppTheme.muted),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('已取消，可点「打开 Release 页」手动下载')),
+                );
+              }
+            },
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
+
     try {
-      final message = await UpdateService.install(info);
+      final message = await UpdateService.install(info, onProgress: (value) {
+        progress.value = value;
+      });
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (error) {
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('下载失败：$error'),
+          action: info.pageUrl == null
+              ? null
+              : SnackBarAction(
+                  label: '打开下载页',
+                  onPressed: () => launchUrl(Uri.parse(info.pageUrl!),
+                      mode: LaunchMode.externalApplication),
+                ),
+        ),
+      );
+    } finally {
+      progress.dispose();
     }
   }
 
@@ -123,7 +204,7 @@ class _VersionScreenState extends State<VersionScreen> {
                 const Text('更新说明', style: TextStyle(color: AppTheme.muted, fontSize: 12)),
                 const SizedBox(height: 6),
                 SelectableText(
-                  info.body.trim().isEmpty ? '（这个 release 没有写说明）' : info.body.trim(),
+                  info.body.trim().isEmpty ? '（这个 release 没有写说明）' : _pretty(info.body),
                   style: const TextStyle(fontSize: 13, height: 1.6),
                 ),
                 const SizedBox(height: 22),

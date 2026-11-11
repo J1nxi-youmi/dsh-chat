@@ -51,7 +51,7 @@ class UpdateInfo {
 class UpdateService {
   static const defaultSource = 'https://github.com/J1nxi-youmi/dsh-chat';
   // CI 每次注入 0.2.<构建号>，本地构建没注入时退化成 0.2.0。
-  static const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.2.0');
+  static const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.3.0');
   static const appBuild = int.fromEnvironment('APP_BUILD', defaultValue: 0);
 
   /// 给界面用的版本串：版本号就是构建号时不重复显示。

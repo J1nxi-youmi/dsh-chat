@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme.dart';
 import '../update.dart';
 import 'connect_screen.dart';
+import 'profile_dialog.dart';
 import 'version_screen.dart';
 
 /// 设置页：服务器、版本（点进去才有更新弹窗）、更新源、换一台 DSH。
@@ -85,6 +86,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               leading: const Icon(Icons.dns_rounded, color: AppTheme.muted),
               title: const Text('服务器'),
               subtitle: Text(widget.server, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_rounded, color: AppTheme.muted),
+              title: const Text('我的资料'),
+              subtitle: const Text('头像和昵称，只保存在这台设备'),
+              onTap: () => showDialog<void>(
+                context: context,
+                builder: (_) => const ProfileDialog(),
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.info_outline_rounded, color: AppTheme.muted),

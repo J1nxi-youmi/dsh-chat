@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -108,35 +109,45 @@ class UpdateService {
     );
   }
 
-  /// Windows：带进度下载安装包并启动；Android：交给浏览器下载 APK。
+  /// Windows 下载安装包并启动；Android 下载 APK 后调起系统安装器；两者都带进度回调。
   static Future<String> install(UpdateInfo info, {void Function(double)? onProgress}) async {
     final url = info.downloadUrl;
     if (url == null) throw '这个 release 里没有可下载的文件';
-    if (Platform.isWindows && url.toLowerCase().endsWith('.exe')) {
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/dsh-chat-setup.exe');
-      final client = http.Client();
-      try {
-        final request = http.Request('GET', Uri.parse(url));
-        final response = await client.send(request).timeout(const Duration(seconds: 60));
-        if (response.statusCode != 200) throw '下载失败（HTTP ${response.statusCode}）';
-        final total = response.contentLength ?? 0;
-        final sink = file.openWrite();
-        var received = 0;
-        await for (final chunk in response.stream) {
-          sink.add(chunk);
-          received += chunk.length;
-          if (total > 0 && onProgress != null) onProgress(received / total);
-        }
-        await sink.close();
-      } finally {
-        client.close();
+    final isExe = Platform.isWindows && url.toLowerCase().endsWith('.exe');
+    final isApk = Platform.isAndroid && url.toLowerCase().endsWith('.apk');
+    if (!isExe && !isApk) {
+      final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      if (!ok) throw '打不开下载地址';
+      return '已在浏览器打开下载页';
+    }
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/${isExe ? 'dsh-chat-setup.exe' : 'dsh-chat.apk'}');
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', Uri.parse(url));
+      final response = await client.send(request).timeout(const Duration(seconds: 60));
+      if (response.statusCode != 200) throw '下载失败（HTTP ${response.statusCode}）';
+      final total = response.contentLength ?? 0;
+      final sink = file.openWrite();
+      var received = 0;
+      await for (final chunk in response.stream) {
+        sink.add(chunk);
+        received += chunk.length;
+        if (total > 0 && onProgress != null) onProgress(received / total);
       }
+      await sink.close();
+    } finally {
+      client.close();
+    }
+    if (isExe) {
       await Process.start(file.path, const [], mode: ProcessStartMode.detached);
       return '安装包已下载，安装程序已启动';
     }
-    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    if (!ok) throw '打不开下载地址';
-    return '已在浏览器打开下载页';
+    // Android：交给系统安装器（第一次会问「允许安装未知应用」）。
+    final result = await OpenFilex.open(file.path);
+    if (result.type != ResultType.done) {
+      throw '打不开安装包：${result.message}';
+    }
+    return '下载完成，请在弹出的页面点「安装」';
   }
 }

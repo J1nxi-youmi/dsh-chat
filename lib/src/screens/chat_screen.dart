@@ -53,10 +53,12 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _recordStarting = false;
   bool _recordReleasedBeforeStart = false;
   bool _dragging = false;
-  int _uploading = 0;
+  final int _uploading = 0;
 
   List<Message> _messages = const [];
-  final List<Attachment> _pending = [];
+  /// 待发送附件：先显示本地预览，上传在后台跑，点发送时若还没传完就等它。
+  final List<_PendingItem> _pending = [];
+  final List<Future<void>> _uploadJobs = [];
   /// 还没被 ack 的消息；断线/重启后按顺序重发。
   final List<Outgoing> _outbox = [];
   int _lastSeq = 0;
@@ -211,7 +213,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final files = await FilePicker.pickFiles(type: imagesOnly ? FileType.image : FileType.any);
       for (final file in files) {
         final bytes = await file.readAsBytes();
-        await _uploadBytes(name: file.name, mime: _guessMime(file.name), bytes: bytes);
+        unawaited(_uploadBytes(name: file.name, mime: _guessMime(file.name), bytes: bytes));
       }
     } catch (error) {
       _toast(error.toString());
@@ -230,25 +232,30 @@ class _ChatScreenState extends State<ChatScreen> {
       _toast('$name 超过 ${limit ~/ (1024 * 1024)}MB');
       return false;
     }
-    if (mounted) setState(() => _uploading += 1);
-    try {
-      final isImage = mime.startsWith('image/');
-      final attachment = await widget.api.upload(
-        name: name,
-        mime: mime,
-        bytes: bytes,
-        kind: kind ?? (isImage ? 'image' : 'file'),
-        textPreview: _isText(name) ? String.fromCharCodes(bytes.take(4000)) : null,
-      );
-      if (!mounted) return true;
-      setState(() => _pending.add(attachment));
-      return true;
-    } catch (error) {
-      _toast(error.toString());
-      return false;
-    } finally {
-      if (mounted) setState(() => _uploading = _uploading > 0 ? _uploading - 1 : 0);
-    }
+    // 先上屏：本地字节直接当预览，上传放后台，不用等隧道一个来回。
+    final isImage = mime.startsWith('image/');
+    final item = _PendingItem(name: name, bytes: bytes, isImage: isImage, isVoice: kind == 'voice');
+    if (mounted) setState(() => _pending.add(item));
+    final job = () async {
+      try {
+        final attachment = await widget.api.upload(
+          name: name,
+          mime: mime,
+          bytes: bytes,
+          kind: kind ?? (isImage ? 'image' : 'file'),
+          textPreview: _isText(name) ? String.fromCharCodes(bytes.take(4000)) : null,
+        );
+        item.attachment = attachment;
+      } catch (error) {
+        _toast('$name 上传失败：$error');
+        if (mounted) setState(() => _pending.remove(item));
+      } finally {
+        if (mounted) setState(() {});
+      }
+    }();
+    _uploadJobs.add(job);
+    unawaited(job.whenComplete(() => _uploadJobs.remove(job)));
+    return true;
   }
 
   /// 拖进来的文件（桌面端）。拖文件夹的话把里面的文件逐个发出去。
@@ -263,11 +270,11 @@ class _ChatScreenState extends State<ChatScreen> {
           continue;
         }
         final bytes = await file.readAsBytes();
-        await _uploadBytes(
+        unawaited(_uploadBytes(
           name: file.name.isEmpty ? '拖入文件' : file.name,
           mime: file.mimeType ?? _guessMime(file.name),
           bytes: bytes,
-        );
+        ));
       } on PathAccessException catch (error) {
         _toast('这个路径读不了（${error.path ?? '未知'}），可能没权限');
       } catch (error) {
@@ -298,11 +305,11 @@ class _ChatScreenState extends State<ChatScreen> {
     for (final file in files) {
       try {
         final name = file.uri.pathSegments.last;
-        await _uploadBytes(
+        unawaited(_uploadBytes(
           name: name,
           mime: _guessMime(name),
           bytes: await file.readAsBytes(),
-        );
+        ));
       } catch (error) {
         _toast('跳过 ${file.path}：$error');
       }
@@ -411,7 +418,12 @@ class _ChatScreenState extends State<ChatScreen> {
         kind: 'voice',
         duration: duration,
       );
-      setState(() => _pending.add(attachment));
+      setState(() => _pending.add(_PendingItem(
+            name: attachment.name,
+            bytes: bytes,
+            isImage: false,
+            isVoice: true,
+          )..attachment = attachment));
       await _send();
     } catch (error) {
       _toast(error.toString());
@@ -456,10 +468,19 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _send() async {
     final text = _input.text.trim();
     if (text.isEmpty && _pending.isEmpty) return;
+    // 还有没传完的附件就把它们等完，最多再等 30 秒。
+    if (_uploadJobs.isNotEmpty) {
+      _toast('正在上传附件…');
+      await Future.wait(_uploadJobs).timeout(const Duration(seconds: 30), onTimeout: () => []);
+    }
+    final readyAttachments = _pending
+        .map((item) => item.attachment)
+        .whereType<Attachment>()
+        .toList();
     final item = Outgoing(
       clientMessageId: _newClientId(),
       text: text,
-      attachments: _pending.toList(),
+      attachments: readyAttachments,
       at: DateTime.now(),
     );
     _input.clear();
@@ -791,8 +812,8 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: _pending.map((attachment) {
-          final isImage = attachment.isImage;
+        children: _pending.map((item) {
+          final isImage = item.isImage;
           return Stack(
             clipBehavior: Clip.none,
             children: [
@@ -804,28 +825,40 @@ class _ChatScreenState extends State<ChatScreen> {
                   color: AppTheme.panelAlt,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppTheme.line),
-                  image: isImage
+                  image: isImage && item.bytes != null
                       ? DecorationImage(
-                          image: NetworkImage(widget.api.mediaUrl(attachment.url)),
+                          image: Image.memory(item.bytes!, fit: BoxFit.cover).image,
                           fit: BoxFit.cover,
                         )
                       : null,
                 ),
                 alignment: Alignment.center,
                 child: isImage
-                    ? const SizedBox.shrink()
+                    ? (item.bytes == null
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const SizedBox.shrink())
                     : Text(
-                        attachment.isVoice
-                            ? '🎙️ ${attachment.duration.toStringAsFixed(1)}s'
-                            : '📎 ${attachment.name}',
+                        item.isVoice
+                            ? '🎙️ 语音'
+                            : '📎 ${item.name}',
                         style: const TextStyle(fontSize: 12),
                       ),
               ),
+              if (!item.ready)
+                const Positioned(
+                  left: 4,
+                  bottom: 4,
+                  child: SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
               Positioned(
                 right: -6,
                 top: -6,
                 child: GestureDetector(
-                  onTap: () => setState(() => _pending.remove(attachment)),
+                  onTap: () => setState(() => _pending.remove(item)),
                   child: Container(
                     width: 18,
                     height: 18,
@@ -1028,4 +1061,22 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     return KeyEventResult.handled;
   }
+}
+
+/// 一条待发送附件：本地预览（bytes）+ 后台上传出来的 attachment。
+class _PendingItem {
+  _PendingItem({
+    required this.name,
+    required this.bytes,
+    required this.isImage,
+    required this.isVoice,
+  });
+
+  final String name;
+  final Uint8List? bytes;
+  final bool isImage;
+  final bool isVoice;
+  Attachment? attachment;
+
+  bool get ready => attachment != null;
 }

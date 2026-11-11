@@ -66,9 +66,9 @@ class _VersionScreenState extends State<VersionScreen> {
   }
 
   Future<void> _download(UpdateInfo info) async {
-    final isWindowsInstaller =
-        Platform.isWindows && (info.setupUrl ?? '').toLowerCase().endsWith('.exe');
-    if (!isWindowsInstaller) {
+    final inAppDownload = (info.setupUrl ?? '').toLowerCase().endsWith('.exe') ||
+        (Platform.isAndroid && (info.apkUrl ?? '').toLowerCase().endsWith('.apk'));
+    if (!inAppDownload) {
       try {
         final message = await UpdateService.install(info);
         if (!mounted) return;

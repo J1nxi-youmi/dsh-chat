@@ -849,84 +849,68 @@ class _ChatScreenState extends State<ChatScreen> {
           color: AppTheme.panel,
           border: Border(top: BorderSide(color: AppTheme.line)),
         ),
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (_recording) _recordingHint(),
             Container(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              padding: const EdgeInsets.fromLTRB(10, 4, 8, 4),
               decoration: BoxDecoration(
                 color: AppTheme.panelAlt,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppTheme.line),
               ),
               child: Column(
                 children: [
                   if (_pending.isNotEmpty) _pendingStrip(),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // 图片 / 文件收进一个「+」菜单，左边只留一个按钮，对齐也简单。
-                      PopupMenuButton<String>(
-                        tooltip: '图片 / 文件',
-                        padding: EdgeInsets.zero,
-                        splashRadius: 18,
-                        icon: const Icon(Icons.add_rounded, size: 22, color: AppTheme.muted),
-                        constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-                        onSelected: (value) {
-                          if (value == 'image') _pickFiles(imagesOnly: true);
-                          if (value == 'file') _pickFiles();
-                        },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(value: 'image', child: Text('图片')),
-                          PopupMenuItem(value: 'file', child: Text('文件')),
-                        ],
-                      ),
-                      _micButton(),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 140),
-                          child: Focus(
-                            onKeyEvent: _onComposerKey,
-                            child: TextField(
-                              controller: _input,
-                              focusNode: _inputFocus,
-                              minLines: 1,
-                              maxLines: 6,
-                              textInputAction: TextInputAction.newline,
-                              decoration: InputDecoration(
-                                hintText: _recording ? '录音中…' : '和${widget.title}说点什么…',
-                                isDense: true,
-                                filled: false,
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 11),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _sendButton(),
-                    ],
-                  ),
-                  if (_isDesktop)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 4, top: 2),
-                        child: Text(
-                          'Enter 发送 · Shift + Enter 换行 · 可拖入文件 · Ctrl+V 粘贴',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.muted.withValues(alpha: 0.8),
-                          ),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 120),
+                    child: Focus(
+                      onKeyEvent: _onComposerKey,
+                      child: TextField(
+                        controller: _input,
+                        focusNode: _inputFocus,
+                        minLines: 1,
+                        maxLines: 5,
+                        textInputAction: TextInputAction.newline,
+                        decoration: InputDecoration(
+                          hintText: _recording ? '录音中…' : '和${widget.title}说点什么…',
+                          isDense: true,
+                          filled: false,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
                     ),
+                  ),
+                  SizedBox(
+                    height: 34,
+                    child: Row(
+                      children: [
+                        PopupMenuButton<String>(
+                          tooltip: '图片 / 文件',
+                          padding: EdgeInsets.zero,
+                          splashRadius: 18,
+                          icon: const Icon(Icons.add_rounded, size: 19, color: AppTheme.muted),
+                          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+                          onSelected: (value) {
+                            if (value == 'image') _pickFiles(imagesOnly: true);
+                            if (value == 'file') _pickFiles();
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(value: 'image', child: Text('图片')),
+                            PopupMenuItem(value: 'file', child: Text('文件')),
+                          ],
+                        ),
+                        _micButton(),
+                        const Spacer(),
+                        _sendButton(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -946,15 +930,15 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Tooltip(
         message: '按住说话（上滑取消）',
         child: Container(
-          width: 36,
-          height: 36,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: _recording ? AppTheme.error.withValues(alpha: 0.18) : Colors.transparent,
           ),
           child: Icon(
             _recording ? Icons.mic : Icons.mic_none_rounded,
-            size: 21,
+            size: 18,
             color: _recording ? AppTheme.error : AppTheme.muted,
           ),
         ),
@@ -966,26 +950,32 @@ class _ChatScreenState extends State<ChatScreen> {
     final enabled = _canSend && !_sending;
     return Material(
       color: enabled ? AppTheme.accent : AppTheme.panelAlt,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(9),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(9),
         onTap: enabled ? _send : null,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: _isDesktop ? 16 : 12, vertical: 9),
-          child: _isDesktop
-              ? Text(
+          padding: EdgeInsets.symmetric(horizontal: _isDesktop ? 12 : 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_isDesktop)
+                Text(
                   '发送',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: enabled ? Colors.white : AppTheme.muted,
                   ),
-                )
-              : Icon(
-                  Icons.arrow_upward_rounded,
-                  size: 18,
-                  color: enabled ? Colors.white : AppTheme.muted,
                 ),
+              if (_isDesktop) const SizedBox(width: 4),
+              Icon(
+                _isDesktop ? Icons.send_rounded : Icons.arrow_upward_rounded,
+                size: 14,
+                color: enabled ? Colors.white : AppTheme.muted,
+              ),
+            ],
+          ),
         ),
       ),
     );

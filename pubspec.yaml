@@ -30,7 +30,7 @@ dependencies:
   desktop_drop: ^0.8.0
   pasteboard: ^0.6.0
   # Android：下载完 APK 后调起系统安装器
-  open_filex: ^4.5.0
+  open_filex: ^4.6.0
 
 dev_dependencies:
   flutter_lints: ^4.0.0

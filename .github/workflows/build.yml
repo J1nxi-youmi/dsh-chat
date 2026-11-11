@@ -178,6 +178,8 @@ jobs:
           ls -lh dist/*.apk dist/*.exe dist/*.zip
 
       - name: Write release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           VERSION=$(bash tool/version.sh "${{ github.run_number }}")
@@ -186,7 +188,13 @@ jobs:
             echo
             echo "### 本版更新内容"
             echo
-            git log -12 --pretty=format:'- %s'
+            PREV=$(gh api "repos/${{ github.repository }}/actions/workflows/build.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].head_sha' 2>/dev/null || true)
+            if [ -n "$PREV" ] && git cat-file -e "$PREV^{commit}" 2>/dev/null && [ "$PREV" != "$(git rev-parse HEAD)" ]; then
+              RANGE="$PREV..HEAD"
+            else
+              RANGE="HEAD~5..HEAD"
+            fi
+            git log --no-merges --pretty=format:'- %s' "$RANGE"
             echo
             echo
             echo "### 下载"

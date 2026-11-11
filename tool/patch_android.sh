@@ -44,6 +44,16 @@ GRADLE=android/app/build.gradle.kts
 perl -0pi -e 's/compileSdk\s*=\s*flutter\.compileSdkVersion/compileSdk = 36/' "$GRADLE"
 perl -0pi -e 's/compileSdkVersion\s+flutter\.compileSdkVersion/compileSdkVersion 36/' "$GRADLE"
 
+# --- 关掉 release lint（lintVital）---
+# JDK 21 + 新 AGP 对插件模块（url_launcher_android 等）的 lint 分析有
+# NoSuchMethodError: List.removeLast() 的已知 bug，release 构建会被它卡死。
+# release 检查交给 flutter analyze，这里直接跳过 lintVital。
+if [ "${GRADLE##*.}" = "kts" ]; then
+  perl -0pi -e 's#(android \{)#$1\n    lint { checkReleaseBuilds = false }#' "$GRADLE"
+else
+  perl -0pi -e 's#(android \{)#$1\n    lint {\n        checkReleaseBuilds false\n    }#' "$GRADLE"
+fi
+
 # --- 原生源码：MainActivity / ChatService / Notifications ---
 PKG=$(grep -oE 'namespace[[:space:]]*=[[:space:]]*"[^"]+"' "$GRADLE" | head -1 | sed -E 's/.*"([^"]+)"/\1/')
 PKG=${PKG:-com.example.dsh_chat}

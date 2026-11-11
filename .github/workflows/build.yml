@@ -58,7 +58,7 @@ jobs:
           set -o pipefail
           echo "commit: $GITHUB_SHA" > build.log
           date >> build.log
-          flutter build apk --release --build-number "${{ github.run_number }}" --dart-define=APP_BUILD=${{ github.run_number }} 2>&1 | tee -a build.log
+          flutter build apk --release --build-name "0.2.${{ github.run_number }}" --build-number "${{ github.run_number }}" --dart-define=APP_BUILD=${{ github.run_number }} --dart-define=APP_VERSION=0.2.${{ github.run_number }} 2>&1 | tee -a build.log
 
       - name: Save logs to ci-logs branch
         if: always()
@@ -105,7 +105,7 @@ jobs:
         run: |
           "commit: $env:GITHUB_SHA" | Out-File -Encoding utf8 windows.log
           (Get-Date).ToUniversalTime().ToString("u") | Out-File -Encoding utf8 -Append windows.log
-          flutter build windows --release --dart-define=APP_BUILD=${{ github.run_number }} 2>&1 | Tee-Object -FilePath windows.log -Append
+          flutter build windows --release --dart-define=APP_BUILD=${{ github.run_number }} --dart-define=APP_VERSION=0.2.${{ github.run_number }} 2>&1 | Tee-Object -FilePath windows.log -Append
 
       - name: Save log to ci-logs-win branch
         if: always()
@@ -142,7 +142,7 @@ jobs:
             $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           }
           if (-not $iscc) { throw "找不到 ISCC.exe" }
-          & $iscc "/DAppVersion=${{ github.run_number }}" "installer\windows.iss"
+          & $iscc "/DAppVersion=0.2.${{ github.run_number }}" "installer\windows.iss"
           if ($LASTEXITCODE -ne 0) { throw "ISCC 失败（$LASTEXITCODE）" }
 
       - uses: actions/upload-artifact@v4
@@ -177,7 +177,7 @@ jobs:
       - name: Write release notes
         run: |
           set -e
-          VERSION=$(awk '/^version:/{print $2}' pubspec.yaml)
+          VERSION="0.2.${{ github.run_number }}"
           {
             echo "最新版本：v${VERSION}（构建 #${{ github.run_number }}）"
             echo

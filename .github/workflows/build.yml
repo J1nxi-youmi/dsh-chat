@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 # 新提交进来时，把同一分支上还在跑的构建取消掉，只留最新一次。
 concurrency:
@@ -18,6 +19,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # 新提交开始时，把还在跑的旧构建取消掉（旧的 workflow 没有 concurrency，
+      # 只能在这里主动取消，免得更老的产物把新 release 覆盖回去）。
+      - name: Cancel older runs
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh run list --workflow build.yml --limit 30 \
+            --json databaseId,status,headSha \
+            --jq '.[] | select(.status == "in_progress" or .status == "queued") | select(.headSha != "${{ github.sha }}") | .databaseId' \
+            | xargs -r -n1 gh run cancel || true
 
       - uses: subosito/flutter-action@v2
         with:

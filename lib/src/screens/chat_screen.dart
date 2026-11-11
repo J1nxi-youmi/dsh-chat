@@ -53,6 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _recordStarting = false;
   bool _recordReleasedBeforeStart = false;
   bool _dragging = false;
+  int _uploading = 0;
 
   List<Message> _messages = const [];
   final List<Attachment> _pending = [];
@@ -165,6 +166,13 @@ class _ChatScreenState extends State<ChatScreen> {
   /// 合并一条消息（去重、按 seq 保序、推进游标）。
   void _merge(Message message) {
     if (_messages.any((item) => item.id == message.id)) return;
+    // 自己发的消息经由 SSE 回来时，把本地「发送中」那条移除，避免出现两条。
+    final echoed = message.clientMessageId;
+    if (echoed != null) {
+      final before = _outbox.length;
+      _outbox.removeWhere((item) => item.clientMessageId == echoed);
+      if (_outbox.length != before) unawaited(_saveOutbox());
+    }
     _messages = [..._messages, message]..sort((left, right) => left.seq.compareTo(right.seq));
     if (message.seq > _lastSeq) _lastSeq = message.seq;
   }
@@ -222,6 +230,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _toast('$name 超过 ${limit ~/ (1024 * 1024)}MB');
       return false;
     }
+    if (mounted) setState(() => _uploading += 1);
     try {
       final isImage = mime.startsWith('image/');
       final attachment = await widget.api.upload(
@@ -237,6 +246,8 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (error) {
       _toast(error.toString());
       return false;
+    } finally {
+      if (mounted) setState(() => _uploading = _uploading > 0 ? _uploading - 1 : 0);
     }
   }
 
@@ -587,6 +598,7 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         children: [
           if (!_connected) _connectionBanner(),
+          if (_uploading > 0) _uploadBanner(),
           Expanded(child: _messageList()),
           if (_pending.isNotEmpty) _pendingBar(),
           _composer(),
@@ -633,6 +645,26 @@ class _ChatScreenState extends State<ChatScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.text),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _uploadBanner() {
+    return Container(
+      width: double.infinity,
+      color: AppTheme.panelAlt,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 8),
+          Text('正在上传…', style: TextStyle(fontSize: 12, color: AppTheme.muted)),
+        ],
       ),
     );
   }

@@ -55,6 +55,7 @@ class Message {
     required this.attachments,
     required this.at,
     this.seq = 0,
+    this.clientMessageId,
   });
 
   final String id;
@@ -65,6 +66,9 @@ class Message {
 
   /// 服务端给每条消息分配的单调序号，用来做断线增量同步。
   final int seq;
+
+  /// 用户消息的幂等键（服务端回显），用来把本地「发送中」那条替换掉。
+  final String? clientMessageId;
 
   bool get isMine => role == 'user';
 
@@ -78,6 +82,7 @@ class Message {
             .toList(),
         at: DateTime.tryParse(json['at']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
         seq: (json['seq'] as num?)?.toInt() ?? 0,
+        clientMessageId: json['clientMessageId']?.toString(),
       );
 }
 

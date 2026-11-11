@@ -58,7 +58,7 @@ jobs:
           set -o pipefail
           echo "commit: $GITHUB_SHA" > build.log
           date >> build.log
-          VERSION=$(awk '/^version:/{print $2}' pubspec.yaml)
+          VERSION=$(bash tool/version.sh "${{ github.run_number }}")
           flutter build apk --release --build-name "$VERSION" --build-number "${{ github.run_number }}" --dart-define=APP_BUILD=${{ github.run_number }} --dart-define=APP_VERSION="$VERSION" 2>&1 | tee -a build.log
 
       - name: Save logs to ci-logs branch
@@ -106,7 +106,7 @@ jobs:
         run: |
           "commit: $env:GITHUB_SHA" | Out-File -Encoding utf8 windows.log
           (Get-Date).ToUniversalTime().ToString("u") | Out-File -Encoding utf8 -Append windows.log
-          $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s*(\S+)').Matches[0].Groups[1].Value
+          $version = (pwsh -NoProfile -ExecutionPolicy Bypass -File ./tool/version.ps1 ${{ github.run_number }}).Trim()
           flutter build windows --release --dart-define=APP_BUILD=${{ github.run_number }} --dart-define=APP_VERSION=$version 2>&1 | Tee-Object -FilePath windows.log -Append
 
       - name: Save log to ci-logs-win branch
@@ -144,7 +144,7 @@ jobs:
             $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           }
           if (-not $iscc) { throw "找不到 ISCC.exe" }
-          $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s*(\S+)').Matches[0].Groups[1].Value
+          $version = (pwsh -NoProfile -ExecutionPolicy Bypass -File ./tool/version.ps1 ${{ github.run_number }}).Trim()
           & $iscc "/DAppVersion=$version" "installer\windows.iss"
           if ($LASTEXITCODE -ne 0) { throw "ISCC 失败（$LASTEXITCODE）" }
 
@@ -180,7 +180,7 @@ jobs:
       - name: Write release notes
         run: |
           set -e
-          VERSION=$(awk '/^version:/{print $2}' pubspec.yaml)
+          VERSION=$(bash tool/version.sh "${{ github.run_number }}")
           {
             echo "最新版本：v${VERSION}（构建 #${{ github.run_number }}）"
             echo

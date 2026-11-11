@@ -200,6 +200,8 @@ jobs:
             done
             echo "commit = ${{ github.sha }}"
             echo '```'
+            echo
+            echo "每个版本的改动见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)。"
           } > NOTES.md
           cat NOTES.md
 

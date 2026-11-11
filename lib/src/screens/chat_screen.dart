@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api.dart';
 import '../app_state.dart';
+import '../image_utils.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/message_bubble.dart';
@@ -227,23 +228,33 @@ class _ChatScreenState extends State<ChatScreen> {
     required Uint8List bytes,
     String? kind,
   }) async {
+    var data = bytes;
+    var mimeType = mime;
     final limit = widget.api.maxUploadBytes;
-    if (bytes.length > limit) {
+    if (data.length > limit) {
       _toast('$name 超过 ${limit ~/ (1024 * 1024)}MB');
       return false;
     }
+    // BMP 伪装成别的扩展名时，手机端渲染会失败：先统一转 PNG。
+    if (mimeType.startsWith('image/')) {
+      final fixed = await normalizeImageBytes(data, mimeType);
+      if (!identical(fixed, data)) {
+        data = fixed;
+        mimeType = 'image/png';
+      }
+    }
     // 先上屏：本地字节直接当预览，上传放后台，不用等隧道一个来回。
     final isImage = mime.startsWith('image/');
-    final item = _PendingItem(name: name, bytes: bytes, isImage: isImage, isVoice: kind == 'voice');
+    final item = _PendingItem(name: name, bytes: data, isImage: isImage, isVoice: kind == 'voice');
     if (mounted) setState(() => _pending.add(item));
     final job = () async {
       try {
         final attachment = await widget.api.upload(
           name: name,
-          mime: mime,
-          bytes: bytes,
+          mime: mimeType,
+          bytes: data,
           kind: kind ?? (isImage ? 'image' : 'file'),
-          textPreview: _isText(name) ? String.fromCharCodes(bytes.take(4000)) : null,
+          textPreview: _isText(name) ? String.fromCharCodes(data.take(4000)) : null,
         );
         item.attachment = attachment;
       } catch (error) {
@@ -340,7 +351,7 @@ class _ChatScreenState extends State<ChatScreen> {
         );
         if (ok) uploaded += 1;
       }
-      if (uploaded == 0) _toast('剪贴板里没有图片或文件');
+      // 没图没文件就不吭声：剪贴板里的文字由输入框自己粘贴，不用打扰。
     } catch (error) {
       _toast('读取剪贴板失败：$error');
     }

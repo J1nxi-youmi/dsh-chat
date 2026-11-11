@@ -600,7 +600,6 @@ class _ChatScreenState extends State<ChatScreen> {
           if (!_connected) _connectionBanner(),
           if (_uploading > 0) _uploadBanner(),
           Expanded(child: _messageList()),
-          if (_pending.isNotEmpty) _pendingBar(),
           _composer(),
         ],
       ),
@@ -784,26 +783,58 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _pendingBar() {
+  /// 待发送附件：贴在输入框里，点右下角「发送」才真的发出去。
+  Widget _pendingStrip() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      color: AppTheme.panel,
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
         children: _pending.map((attachment) {
-          return Chip(
-            backgroundColor: AppTheme.panelAlt,
-            label: Text(
-              attachment.isVoice
-                  ? '🎙️ ${attachment.duration.toStringAsFixed(1)}s'
-                  : attachment.isImage
-                      ? '🖼️ ${attachment.name}'
-                      : '📎 ${attachment.name}',
-              style: const TextStyle(fontSize: 12),
-            ),
-            onDeleted: () => setState(() => _pending.remove(attachment)),
+          final isImage = attachment.isImage;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: isImage ? 64 : null,
+                height: isImage ? 64 : null,
+                padding: isImage ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.panelAlt,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.line),
+                  image: isImage
+                      ? DecorationImage(
+                          image: NetworkImage(widget.api.mediaUrl(attachment.url)),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: isImage
+                    ? const SizedBox.shrink()
+                    : Text(
+                        attachment.isVoice
+                            ? '🎙️ ${attachment.duration.toStringAsFixed(1)}s'
+                            : '📎 ${attachment.name}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+              ),
+              Positioned(
+                right: -6,
+                top: -6,
+                child: GestureDetector(
+                  onTap: () => setState(() => _pending.remove(attachment)),
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: const BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
+                    child: const Icon(Icons.close_rounded, size: 12, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
           );
         }).toList(),
       ),
@@ -832,6 +863,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               child: Column(
                 children: [
+                  if (_pending.isNotEmpty) _pendingStrip(),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [

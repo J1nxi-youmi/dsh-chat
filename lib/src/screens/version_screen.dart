@@ -54,6 +54,10 @@ class _VersionScreenState extends State<VersionScreen> {
   /// 把 release 正文里最扎眼的 markdown 标记去掉，读起来像正文。
   String _pretty(String body) {
     var text = body;
+    // 「下载 / 校验 / CHANGELOG 链接」是给 GitHub 页面看的，App 里不需要。
+    final cut = text.indexOf(RegExp(r'\n#{1,6}\s*(下载|校验)'));
+    if (cut > 0) text = text.substring(0, cut);
+    text = text.replaceAll(RegExp(r'^.*每个版本的改动见.*$', multiLine: true), '');
     text = text.replaceAll(RegExp(r'```[a-zA-Z]*'), '');
     text = text.replaceAll(RegExp(r'^#{1,6}\s*', multiLine: true), '');
     text = text.replaceAll('**', '');

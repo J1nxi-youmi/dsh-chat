@@ -24,7 +24,6 @@
 - Enter 发送，Shift + Enter 换行
 - 文件直接拖进聊天框；Ctrl+V 粘贴图片或文件
 - 语音按住说话，松开发送，上滑取消
-- 单文件上限默认 96MB（插件 `config.json` 或网页设置页可改，App 端校验默认也是 96MB）
 
 ## 长什么样（手机端）
 
@@ -98,4 +97,4 @@ tool/patch_windows.ps1          CI 里给生成的 CMakeLists 加 MSVC 兼容宏
 - iOS 还没做；需要 macOS + Xcode 才能编。
 - 语音是「发语音条」，模型听到的是转写文字（后端配了 ASR 才有，没配就只有「语音，约 N 秒」）。
 - 附件走 HTTP 直连；如果后端只走中转，图片/语音暂时拿不到。
-- 大文件上限 96MB（跟服务端一致，`config.json` 里可调 `maxUploadBytes`）。
+- 大文件上限默认 96MB：插件 `config.json` 的 `maxUploadBytes`（字节）或网页设置页可改；App 启动时会读 `/healthz` 的上限并跟随。

@@ -100,10 +100,9 @@ class _VersionScreenState extends State<VersionScreen> {
               children: [
                 const Text('当前版本', style: TextStyle(color: AppTheme.muted, fontSize: 12)),
                 const SizedBox(height: 4),
-                const Text(
-                  'v${UpdateService.appVersion}'
-                  '${UpdateService.appBuild > 0 ? '（构建 #${UpdateService.appBuild}）' : ''}',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                Text(
+                  UpdateService.displayVersion,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 18),
                 const Text('最新版本', style: TextStyle(color: AppTheme.muted, fontSize: 12)),

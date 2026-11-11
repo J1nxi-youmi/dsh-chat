@@ -89,10 +89,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ListTile(
               leading: const Icon(Icons.info_outline_rounded, color: AppTheme.muted),
               title: const Text('版本'),
-              subtitle: const Text(
-                'v${UpdateService.appVersion}'
-                '${UpdateService.appBuild > 0 ? '（构建 #${UpdateService.appBuild}）' : ''}',
-              ),
+              subtitle: Text(UpdateService.displayVersion),
               trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const VersionScreen()),

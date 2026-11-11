@@ -32,6 +32,12 @@ dependencies:
   # Android：下载完 APK 后调起系统安装器
   open_filex: ^4.6.0
 
+# window_manager 0.6.0 拉的 nativeapi 0.5.10 用了 Isolate.create（Dart 还没发布），
+# 钉回 0.5.9 等上游/Dart 跟上后去掉。
+dependency_overrides:
+  nativeapi: 0.5.9
+  nativeapi_flutter: 0.5.9
+
 dev_dependencies:
   flutter_lints: ^4.0.0
 

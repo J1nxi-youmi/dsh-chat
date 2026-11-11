@@ -2,9 +2,12 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
+import 'dart:io';
+
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models.dart';
+import '../profile.dart';
 import '../theme.dart';
 
 final _linkPattern = RegExp('https?://[^\\s<>\'"]+');
@@ -31,10 +34,17 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mine = message.isMine;
+    final avatar = _Avatar(mine: mine);
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!mine) avatar,
+          Flexible(
+            child: Container(
+        margin: EdgeInsets.only(bottom: 10, left: mine ? 0 : 6, right: mine ? 6 : 0),
         padding: const EdgeInsets.fromLTRB(12, 9, 12, 7),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
         decoration: BoxDecoration(
@@ -85,6 +95,10 @@ class MessageBubble extends StatelessWidget {
             ),
           ],
         ),
+            ),
+          ),
+          if (mine) avatar,
+        ],
       ),
     );
   }
@@ -270,6 +284,30 @@ class TypingRow extends StatelessWidget {
             Text('正在输入…', style: TextStyle(fontSize: 13, color: AppTheme.muted)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 消息旁的小头像：对方是会话形象，自己用「我的资料」里的头像。
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.mine});
+
+  final bool mine;
+
+  @override
+  Widget build(BuildContext context) {
+    ImageProvider? image;
+    if (mine) {
+      final path = AppProfile.instance.avatarPath;
+      if (path != null && File(path).existsSync()) image = FileImage(File(path));
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AvatarBadge(
+        name: mine ? AppProfile.instance.displayName : '',
+        size: 30,
+        image: image,
       ),
     );
   }

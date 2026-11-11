@@ -173,10 +173,22 @@ class RoundButton extends StatelessWidget {
 
 /// 带渐变的小头像占位（用名字首字），比纯色圆更有「角色感」。
 class AvatarBadge extends StatelessWidget {
-  const AvatarBadge({super.key, required this.name, this.size = 46});
+  const AvatarBadge({
+    super.key,
+    required this.name,
+    this.size = 46,
+    this.image,
+    this.onTap,
+  });
 
   final String name;
   final double size;
+
+  /// 自定义头像；为空时用内置的会话形象（assets/avatar.png）。
+  final ImageProvider? image;
+
+  /// 点头像（用于「我的资料」入口）。
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -197,8 +209,16 @@ class AvatarBadge extends StatelessWidget {
       ),
       alignment: Alignment.center,
       clipBehavior: Clip.antiAlias,
-      // 统一的会话形象：assets/avatar.png；加载失败回退到首字。
-      child: Image.asset(
+      child: _face(initial),
+    );
+  }
+
+  Widget _face(String initial) {
+    Widget face;
+    if (image != null) {
+      face = Image(image: image!, width: size, height: size, fit: BoxFit.cover);
+    } else {
+      face = Image.asset(
         'assets/avatar.png',
         width: size,
         height: size,
@@ -211,7 +231,9 @@ class AvatarBadge extends StatelessWidget {
             color: Colors.white,
           ),
         ),
-      ),
-    );
+      );
+    }
+    if (onTap == null) return face;
+    return InkWell(onTap: onTap, child: face);
   }
 }

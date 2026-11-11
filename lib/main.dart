@@ -11,6 +11,7 @@ import 'src/notify.dart';
 import 'src/screens/connect_screen.dart';
 import 'src/screens/conversations_screen.dart';
 import 'src/screens/desktop_home.dart';
+import 'src/profile.dart';
 import 'src/session.dart';
 import 'src/theme.dart';
 
@@ -36,6 +37,8 @@ Future<void> main() async {
   }
   // Windows 的系统通知、Android 的前台服务都在这里初始化。
   await Notifier.setup();
+    // 先把「我的资料」读出来（昵称 + 自定义头像）。
+  await AppProfile.instance.load();
   runApp(const ChatApp());
 }
 

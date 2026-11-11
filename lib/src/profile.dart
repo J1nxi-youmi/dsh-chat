@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -67,13 +68,19 @@ class AppProfile extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 把选中的图片复制进应用数据目录，App 升级/换目录也不丢。
+  /// 把选中的图片统一转成 PNG 存进应用数据目录。
+  /// 相册里很多图实际是 BMP/HEIC，直接按 .png 存会在部分端渲染失败。
   Future<void> setAvatarFromFile(String sourcePath) async {
+    final bytes = await File(sourcePath).readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final png = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+    if (png == null) throw '图片解码失败';
     final dir = await getApplicationSupportDirectory();
     final avatars = Directory('${dir.path}/avatars');
     await avatars.create(recursive: true);
     final target = File('${avatars.path}/self.png');
-    await File(sourcePath).copy(target.path);
+    await target.writeAsBytes(png.buffer.asUint8List(), flush: true);
     _avatarPath = target.path;
     await save();
   }

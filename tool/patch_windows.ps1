@@ -1,4 +1,4 @@
-﻿# 给 flutter 现生成的 Windows 工程打补丁（CI 里跑）。
+# 给 flutter 现生成的 Windows 工程打补丁（CI 里跑）。
 #
 # 背景：just_audio_windows 0.2.3 的 C++ 走 C++/WinRT + /await 的 <experimental/coroutine>，
 # 新版 MSVC（VS 18 / 14.51）把这条路直接判成错误 STL1011：
@@ -49,4 +49,15 @@ if (Test-Path -LiteralPath $mainCpp) {
         [System.IO.File]::WriteAllText($mainCpp, $patched, (New-Object System.Text.UTF8Encoding($false)))
         Write-Host "窗口标题已改为 Dshchat"
     }
+}
+
+# --- 应用图标 ---
+# 用仓库里的 tool/app_icon.ico 覆盖 flutter create 生成的默认图标，
+# Runner.rc 引用的是这个路径，exe 图标和 Inno 安装包图标都会跟着变。
+$root = Split-Path -Parent $PSScriptRoot
+$icoSrc = Join-Path $root 'tool/app_icon.ico'
+$icoDst = Join-Path $root 'windows/runner/resources/app_icon.ico'
+if ((Test-Path -LiteralPath $icoSrc) -and (Test-Path -LiteralPath (Split-Path -Parent $icoDst))) {
+    Copy-Item -LiteralPath $icoSrc -Destination $icoDst -Force
+    Write-Host "应用图标已替换为 tool/app_icon.ico"
 }

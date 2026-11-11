@@ -106,13 +106,6 @@ jobs:
 
       - run: flutter pub get
 
-      # 生成 Windows 图标（app_icon.ico + Runner.rc）。
-      # flutter_launcher_icons 的 windows 分支在某些图源下会抛错，
-      # 失败就退回默认图标，别挡住出包。
-      - name: Generate launcher icons
-        continue-on-error: true
-        run: dart run flutter_launcher_icons
-
       - name: Build Windows
         run: |
           "commit: $env:GITHUB_SHA" | Out-File -Encoding utf8 windows.log

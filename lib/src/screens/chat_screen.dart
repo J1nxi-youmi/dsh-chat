@@ -340,16 +340,14 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
       final files = await Pasteboard.files();
-      var uploaded = 0;
       for (final path in files) {
         final file = File(path);
         if (!await file.exists()) continue;
-        final ok = await _uploadBytes(
+        unawaited(_uploadBytes(
           name: file.uri.pathSegments.isEmpty ? '粘贴的文件' : file.uri.pathSegments.last,
           mime: _guessMime(path),
           bytes: await file.readAsBytes(),
-        );
-        if (ok) uploaded += 1;
+        ));
       }
       // 没图没文件就不吭声：剪贴板里的文字由输入框自己粘贴，不用打扰。
     } catch (error) {

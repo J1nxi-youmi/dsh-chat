@@ -2,9 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-// 0.6 把老 API 挪到了 legacy.dart：windowManager / WindowOptions 还是这套顺手。
-// ignore_for_file: deprecated_member_use
-import 'package:window_manager/legacy.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'src/api.dart';
 import 'src/notify.dart';

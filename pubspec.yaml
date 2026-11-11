@@ -25,18 +25,12 @@ dependencies:
   # Windows 的系统通知（Android 的通知走原生通道，不用这个包）
   local_notifier: ^0.1.6
   # 桌面窗口初始大小 / 最小尺寸
-  window_manager: ^0.6.0
+  window_manager: 0.5.1
   # 桌面端：拖文件进聊天框、Ctrl+V 粘贴图片
   desktop_drop: ^0.8.0
   pasteboard: ^0.6.0
   # Android：下载完 APK 后调起系统安装器
   open_filex: ^4.6.0
-
-# window_manager 0.6.0 拉的 nativeapi 0.5.10 用了 Isolate.create（Dart 还没发布），
-# 钉回 0.5.9 等上游/Dart 跟上后去掉。
-dependency_overrides:
-  nativeapi: 0.5.9
-  nativeapi_flutter: 0.5.9
 
 dev_dependencies:
   flutter_lints: ^4.0.0

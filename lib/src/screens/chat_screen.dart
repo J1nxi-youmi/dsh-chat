@@ -232,7 +232,7 @@ class _ChatScreenState extends State<ChatScreen> {
     var mimeType = mime;
     final limit = widget.api.maxUploadBytes;
     if (data.length > limit) {
-      _toast('$name 超过 ${limit ~/ (1024 * 1024)}MB');
+      _toast('$name 超过上限 ${limit ~/ (1024 * 1024)}MB，发不出去');
       return false;
     }
     // BMP 伪装成别的扩展名时，手机端渲染会失败：先统一转 PNG。

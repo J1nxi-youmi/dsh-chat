@@ -7,7 +7,7 @@ import '../api.dart';
 import '../models.dart';
 import '../theme.dart';
 import 'chat_screen.dart';
-import 'connect_screen.dart';
+import 'settings_screen.dart';
 
 /// 桌面端：左边图标栏 + 会话列表 + 右边聊天，QQ / 星伴那种三栏。
 class DesktopHome extends StatefulWidget {
@@ -121,25 +121,11 @@ class _DesktopHomeState extends State<DesktopHome> {
     }
   }
 
-  Future<void> _switchServer() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.panel,
-        title: const Text('换一台 DSH'),
-        content: Text('当前连接：${widget.server}'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('断开')),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
+  void _openSettings() {
+    Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ConnectScreen(initialServer: widget.server, initialToken: widget.token),
+        builder: (_) => SettingsScreen(server: widget.server, token: widget.token),
       ),
-      (_) => false,
     );
   }
 
@@ -211,7 +197,7 @@ class _DesktopHomeState extends State<DesktopHome> {
           const SizedBox(height: 22),
           _railButton(Icons.chat_bubble_rounded, '消息', selected: true),
           const Spacer(),
-          _railButton(Icons.settings_rounded, '设置', onTap: _switchServer),
+          _railButton(Icons.settings_rounded, '设置', onTap: _openSettings),
           const SizedBox(height: 16),
         ],
       ),

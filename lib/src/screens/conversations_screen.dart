@@ -7,6 +7,7 @@ import '../models.dart';
 import '../theme.dart';
 import 'chat_screen.dart';
 import 'connect_screen.dart';
+import 'settings_screen.dart';
 
 class ConversationsScreen extends StatefulWidget {
   const ConversationsScreen({
@@ -122,6 +123,15 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       appBar: AppBar(
         title: const Text('聊天'),
         actions: [
+          IconButton(
+            tooltip: '设置',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => SettingsScreen(server: widget.server, token: widget.token),
+              ),
+            ),
+            icon: const Icon(Icons.settings_outlined),
+          ),
           IconButton(
             tooltip: '换一台 DSH',
             onPressed: _switchServer,

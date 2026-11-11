@@ -35,7 +35,7 @@ class _VersionScreenState extends State<VersionScreen> {
           backgroundColor: AppTheme.panel,
           title: Text('发现新版本 ${info.versionLabel}'),
           content: Text(
-            '当前构建 #${UpdateService.appBuild}，最新构建 #${info.buildNumber}。\n\n'
+            '当前 ${UpdateService.displayVersion}，最新 ${info.versionLabel}。\n\n'
             '${info.body.split('\n').take(8).join('\n')}',
             style: const TextStyle(height: 1.5, fontSize: 13),
           ),
@@ -108,8 +108,7 @@ class _VersionScreenState extends State<VersionScreen> {
                 const Text('最新版本', style: TextStyle(color: AppTheme.muted, fontSize: 12)),
                 const SizedBox(height: 4),
                 Text(
-                  '${info.versionLabel}'
-                  '${info.buildNumber > 0 ? '（构建 #${info.buildNumber}）' : ''}',
+                  info.versionLabel,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,

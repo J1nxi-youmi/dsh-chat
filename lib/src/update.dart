@@ -54,12 +54,8 @@ class UpdateService {
   static const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.3.0');
   static const appBuild = int.fromEnvironment('APP_BUILD', defaultValue: 0);
 
-  /// 给界面用的版本串：版本号就是构建号时不重复显示。
-  static String get displayVersion {
-    if (appBuild > 0 && appVersion == '$appBuild') return 'v$appVersion';
-    if (appBuild > 0) return 'v$appVersion（构建 #$appBuild）';
-    return 'v$appVersion';
-  }
+  /// 界面只显示版本号，构建号只在内部比较用。
+  static String get displayVersion => 'v$appVersion';
 
   static Future<String> source() async {
     final prefs = await SharedPreferences.getInstance();

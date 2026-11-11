@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# 新提交进来时，把同一分支上还在跑的构建取消掉，只留最新一次。
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   apk:
     runs-on: ubuntu-latest

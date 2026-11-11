@@ -195,8 +195,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  /// 单个附件上限，和服务端保持一致。
-  static const _maxUploadBytes = 96 * 1024 * 1024;
 
   Future<void> _pickFiles({bool imagesOnly = false}) async {
     try {
@@ -219,8 +217,9 @@ class _ChatScreenState extends State<ChatScreen> {
     required Uint8List bytes,
     String? kind,
   }) async {
-    if (bytes.length > _maxUploadBytes) {
-      _toast('$name 超过 96MB');
+    final limit = widget.api.maxUploadBytes;
+    if (bytes.length > limit) {
+      _toast('$name 超过 ${limit ~/ (1024 * 1024)}MB');
       return false;
     }
     try {

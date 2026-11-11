@@ -29,6 +29,9 @@ class ChatApi {
   bool _eventsStarted = false;
   final _eventsController = StreamController<Map<String, dynamic>>.broadcast();
 
+  /// 服务端允许的单文件上限（字节），从 /healthz 读；读不到就用 96MB。
+  int maxUploadBytes = 96 * 1024 * 1024;
+
   /// SSE 是否在线：断线横幅和「重连后补发」都靠它。
   final ValueNotifier<bool> connected = ValueNotifier<bool>(false);
 
@@ -159,6 +162,17 @@ class ChatApi {
     final url = path.startsWith('http') ? path : '$baseUrl$path';
     if (url.contains('t=')) return url;
     return '$url${url.contains('?') ? '&' : '?'}t=$token';
+  }
+
+  /// 问一下服务端允许多大的文件（/healthz 里的 maxUploadBytes）。
+  Future<void> refreshLimits() async {
+    try {
+      final data = await _send('GET', '/healthz');
+      final limit = data is Map ? (data['maxUploadBytes'] as num?)?.toInt() : null;
+      if (limit != null && limit > 0) maxUploadBytes = limit;
+    } catch (_) {
+      /* 拿不到就按默认 96MB */
+    }
   }
 
   /// 连 SSE，断了自己重连。重复调用无副作用。

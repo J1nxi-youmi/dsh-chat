@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'api.dart';
@@ -16,6 +18,7 @@ class Session {
     api?.dispose();
     api = next;
     next.startEvents();
+    unawaited(next.refreshLimits());
     next.events.listen(_onMessage);
   }
 

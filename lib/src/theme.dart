@@ -196,12 +196,20 @@ class AvatarBadge extends StatelessWidget {
         ],
       ),
       alignment: Alignment.center,
-      child: Text(
-        initial,
-        style: TextStyle(
-          fontSize: size * 0.42,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      // 统一的会话形象：assets/avatar.png；加载失败回退到首字。
+      child: Image.asset(
+        'assets/avatar.png',
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Text(
+          initial,
+          style: TextStyle(
+            fontSize: size * 0.42,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
         ),
       ),
     );

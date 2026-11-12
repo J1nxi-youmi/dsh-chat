@@ -125,22 +125,6 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     }
   }
 
-  Future<void> _switchServer() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('server');
-    await prefs.remove('token');
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => ConnectScreen(
-          initialServer: widget.server,
-          initialToken: widget.token,
-        ),
-      ),
-      (_) => false,
-    );
-  }
-
   void _toast(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));

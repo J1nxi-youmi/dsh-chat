@@ -906,18 +906,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 color: AppTheme.panel,
                 border: Border(top: BorderSide(color: AppTheme.line)),
               ),
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (_recording) _recordingHint(),
             Container(
-              padding: const EdgeInsets.fromLTRB(10, 4, 8, 4),
-              decoration: BoxDecoration(
-                color: AppTheme.panelAlt,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.line),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Column(
                 children: [
                   if (_pending.isNotEmpty) _pendingStrip(),
@@ -932,7 +927,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         maxLines: 5,
                         textInputAction: TextInputAction.newline,
                         decoration: InputDecoration(
-                          hintText: _recording ? '录音中…' : '和${widget.title}说点什么…',
+                          hintText: _recording ? '录音中…' : '',
                           isDense: true,
                           filled: false,
                           border: InputBorder.none,

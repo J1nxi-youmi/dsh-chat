@@ -554,6 +554,8 @@ async function handleApi(req, res, url) {
       if (typeof body.avatarUrl === 'string') saved.avatarUrl = body.avatarUrl.slice(0, 500);
       await mkdir(dirname(profileFile), { recursive: true });
       await writeFile(profileFile, JSON.stringify(saved, null, 2));
+      // 广播给所有在线设备：资料变了，各端自动重新拉取。
+      broadcast({ type: 'profile' });
       return json(res, 200, { ok: true, profile: saved });
     }
   }

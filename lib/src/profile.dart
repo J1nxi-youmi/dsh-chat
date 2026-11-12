@@ -91,9 +91,14 @@ class AppProfile extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 云端拉回来的资料（连接 DSH 时调用）。
+  /// 云端拉回来的资料（连接/收到 profile 事件时调用）。云端是权威：直接覆盖本地。
   Future<void> applyRemote({required String nickname, required String avatarUrl}) async {
     _remoteNickname = nickname;
+    if (nickname.trim().isNotEmpty) {
+      _nickname = nickname.trim();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyNickname, _nickname);
+    }
     _remoteUrl = avatarUrl.isEmpty ? null : avatarUrl;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyRemoteNickname, _remoteNickname);

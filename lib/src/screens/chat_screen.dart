@@ -956,8 +956,30 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             if (value == 'file') _pickFiles();
                           },
                           itemBuilder: (context) => const [
-                            PopupMenuItem(value: 'image', child: Text('图片')),
-                            PopupMenuItem(value: 'file', child: Text('文件')),
+                            PopupMenuItem(
+                              value: 'image',
+                              height: 40,
+                              child: SizedBox(
+                                width: 140,
+                                child: Row(children: [
+                                  Icon(Icons.image_rounded, size: 17, color: AppTheme.muted),
+                                  SizedBox(width: 10),
+                                  Text('图片'),
+                                ]),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'file',
+                              height: 40,
+                              child: SizedBox(
+                                width: 140,
+                                child: Row(children: [
+                                  Icon(Icons.insert_drive_file_rounded, size: 17, color: AppTheme.muted),
+                                  SizedBox(width: 10),
+                                  Text('文件'),
+                                ]),
+                              ),
+                            ),
                           ],
                         ),
                         _micButton(),

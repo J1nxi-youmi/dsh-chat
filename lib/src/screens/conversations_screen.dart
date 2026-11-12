@@ -268,30 +268,13 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         ],
       );
     }
-    return ListView.separated(
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       itemCount: _filtered.length,
-      separatorBuilder: (_, __) => const Divider(height: 1, indent: 76),
       itemBuilder: (context, index) {
         final conversation = _filtered[index];
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          leading: AvatarBadge(name: conversation.title),
-          title: Text(
-            conversation.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          subtitle: Text(
-            conversation.preview,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppTheme.muted, fontSize: 13),
-          ),
-          trailing: Text(
-            _timeText(conversation.updatedAt),
-            style: const TextStyle(color: AppTheme.muted, fontSize: 12),
-          ),
+        return InkWell(
+          borderRadius: BorderRadius.circular(10),
           onTap: () async {
             await Navigator.of(context).push(
               MaterialPageRoute(
@@ -305,6 +288,51 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             _load();
           },
           onLongPress: () => _delete(conversation),
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              children: [
+                AvatarBadge(name: conversation.title, size: 40),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              conversation.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          Text(
+                            _timeText(conversation.updatedAt),
+                            style: const TextStyle(fontSize: 10.5, color: AppTheme.muted),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        conversation.preview,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12, color: AppTheme.muted),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: '删除对话',
+                  onPressed: () => _delete(conversation),
+                  icon: const Icon(Icons.more_horiz_rounded, size: 16, color: AppTheme.muted),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );

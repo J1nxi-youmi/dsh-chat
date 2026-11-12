@@ -900,10 +900,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
-          color: AppTheme.panel,
-          border: Border(top: BorderSide(color: AppTheme.line)),
-        ),
+        decoration: _isDesktop
+            ? null
+            : const BoxDecoration(
+                color: AppTheme.panel,
+                border: Border(top: BorderSide(color: AppTheme.line)),
+              ),
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,

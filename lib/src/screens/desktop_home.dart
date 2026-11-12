@@ -168,42 +168,40 @@ class _DesktopHomeState extends State<DesktopHome> {
   @override
   Widget build(BuildContext context) {
     final selected = _selected;
-    return Scaffold(
-      backgroundColor: AppTheme.bg,
-      body: Row(
-        children: [
-          _rail(),
-          Container(width: 1, color: AppTheme.line),
-          SizedBox(width: 300, child: _listPane()),
-          Container(width: 1, color: AppTheme.line),
-          Expanded(
-            child: selected == null
-                ? _emptyPane()
-                : Column(
-                    children: [
-                      _chatHeader(selected),
-                      Container(height: 1, color: AppTheme.line),
-                      Expanded(
-                        child: ChatScreen(
-                          key: ValueKey(selected.id),
-                          api: widget.api,
-                          conversationId: selected.id,
-                          title: selected.title,
-                          embedded: true,
+    return StarryBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Row(
+          children: [
+            _rail(),
+            SizedBox(width: 300, child: _listPane()),
+            Expanded(
+              child: selected == null
+                  ? _emptyPane()
+                  : Column(
+                      children: [
+                        _chatHeader(selected),
+                        Expanded(
+                          child: ChatScreen(
+                            key: ValueKey(selected.id),
+                            api: widget.api,
+                            conversationId: selected.id,
+                            title: selected.title,
+                            embedded: true,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-          ),
-        ],
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _rail() {
-    return Container(
+    return SizedBox(
       width: 62,
-      color: AppTheme.panel,
       child: Column(
         children: [
           const SizedBox(height: 18),
@@ -254,8 +252,7 @@ class _DesktopHomeState extends State<DesktopHome> {
   }
 
   Widget _listPane() {
-    return Container(
-      color: AppTheme.panel,
+    return SizedBox(
       child: Column(
         children: [
           Padding(
@@ -306,10 +303,6 @@ class _DesktopHomeState extends State<DesktopHome> {
             ),
           ),
           Expanded(child: _conversationList()),
-          Container(
-            height: 1,
-            color: AppTheme.line,
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
@@ -446,7 +439,6 @@ class _DesktopHomeState extends State<DesktopHome> {
 
   Widget _chatHeader(Conversation conversation) {
     return Container(
-      color: AppTheme.panel,
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
       child: Row(
         children: [

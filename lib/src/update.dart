@@ -68,6 +68,43 @@ class UpdateService {
     await prefs.setString('update.source', value.trim());
   }
 
+  /// 隧道代理地址：连接页存的服务器地址（手机那台 DSH 下载 GitHub 是通的）。
+  static Future<String?> _proxyBase() async {
+    final prefs = await SharedPreferences.getInstance();
+    final server = prefs.getString('server');
+    final token = prefs.getString('token');
+    if (server == null || server.isEmpty || token == null || token.isEmpty) return null;
+    return '$server/api/proxy?t=${Uri.encodeComponent(token)}';
+  }
+
+  /// 打开一个 GitHub 资源：先直连，超时/失败自动走隧道代理。
+  static Future<http.StreamedResponse> _openStream(String url, {Duration? timeout}) async {
+    final client = http.Client();
+    try {
+      final resp = await client
+          .send(http.Request('GET', Uri.parse(url)))
+          .timeout(timeout ?? const Duration(seconds: 30));
+      if (resp.statusCode == 200) return resp;
+    } catch (_) {
+      // 直连不通（国内常见），走隧道代理兜底。
+    }
+    final proxy = await _proxyBase();
+    if (proxy == null) throw '连不上 GitHub（也没有可用的隧道代理）';
+    final resp = await client
+        .send(http.Request('GET', Uri.parse('$proxy&url=${Uri.encodeComponent(url)}')))
+        .timeout(timeout ?? const Duration(seconds: 60));
+    if (resp.statusCode != 200) throw '隧道代理下载失败（HTTP ${resp.statusCode}）';
+    return resp;
+  }
+
+  /// GET 一个文本资源（JSON API），带隧道兜底。
+  static Future<String?> _readString(String url, {Map<String, String>? headers}) async {
+    final resp = await _openStream(url);
+    final body = await http.Response.fromStream(resp);
+    if (body.statusCode != 200) return null;
+    return body.body;
+  }
+
   /// 拉最新 release（GitHub API）。更新源只接受 github.com/<owner>/<repo>。
   static Future<UpdateInfo> fetchLatest() async {
     final src = await source();
@@ -77,15 +114,11 @@ class UpdateService {
     }
     final owner = match.group(1)!;
     final repo = match.group(2)!.replaceAll(RegExp(r'\.git$'), '');
-    final api = Uri.parse('https://api.github.com/repos/$owner/$repo/releases/latest');
-    final response = await http.get(api, headers: {
-      'accept': 'application/vnd.github+json',
-      'user-agent': 'dsh-chat',
-    }).timeout(const Duration(seconds: 20));
-    if (response.statusCode != 200) {
-      throw '查询更新失败（HTTP ${response.statusCode}）';
-    }
-    final data = response.body;
+    final data = await _readString(
+      'https://api.github.com/repos/$owner/$repo/releases/latest',
+      headers: {'accept': 'application/vnd.github+json', 'user-agent': 'dsh-chat'},
+    );
+    if (data == null) throw '查询更新失败';
     final json = const JsonDecoder().convert(data) as Map<String, dynamic>;
     final assets = (json['assets'] as List?) ?? const [];
     String? findAsset(String suffix) {
@@ -122,23 +155,16 @@ class UpdateService {
     }
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/${isExe ? 'dsh-chat-setup.exe' : 'dsh-chat.apk'}');
-    final client = http.Client();
-    try {
-      final request = http.Request('GET', Uri.parse(url));
-      final response = await client.send(request).timeout(const Duration(seconds: 60));
-      if (response.statusCode != 200) throw '下载失败（HTTP ${response.statusCode}）';
-      final total = response.contentLength ?? 0;
-      final sink = file.openWrite();
-      var received = 0;
-      await for (final chunk in response.stream) {
-        sink.add(chunk);
-        received += chunk.length;
-        if (total > 0 && onProgress != null) onProgress(received / total);
-      }
-      await sink.close();
-    } finally {
-      client.close();
+    final response = await _openStream(url, timeout: const Duration(seconds: 60));
+    final total = response.contentLength ?? 0;
+    final sink = file.openWrite();
+    var received = 0;
+    await for (final chunk in response.stream) {
+      sink.add(chunk);
+      received += chunk.length;
+      if (total > 0 && onProgress != null) onProgress(received / total);
     }
+    await sink.close();
     if (isExe) {
       await Process.start(file.path, const [], mode: ProcessStartMode.detached);
       return '安装包已下载，安装程序已启动';

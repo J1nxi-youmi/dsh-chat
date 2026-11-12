@@ -12,6 +12,7 @@ import { promisify } from 'node:util';
 const execAsync = promisify(exec);
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { Readable } from 'node:stream';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -490,6 +491,37 @@ async function handleApi(req, res, url) {
     await db.save();
     broadcast({ type: 'message', conversationId: conversation.id, message });
     return json(res, 200, { ok: true, conversationId: conversation.id, message });
+  }
+
+  // GitHub 下载代理：App 直连 github.com 超时（国内常见），走这条隧道兜底。
+  // 只放行 GitHub 系域名，且必须带 token，防滥用。
+  if (path === '/api/proxy') {
+    const tokenQ = url.searchParams.get('t');
+    if (tokenQ !== config.token) return fail(res, 401, 'token 不对');
+    const target = url.searchParams.get('url');
+    if (!target) return fail(res, 400, '缺 url 参数');
+    let parsed;
+    try {
+      parsed = new URL(target);
+    } catch {
+      return fail(res, 400, 'url 不合法');
+    }
+    const hostOk = /(^|\.)github\.com$/.test(parsed.hostname)
+      || /(^|\.)githubusercontent\.com$/.test(parsed.hostname);
+    if (!hostOk) return fail(res, 403, '只允许代理 GitHub 资源');
+    try {
+      const upstream = await fetch(target, { redirect: 'follow', headers: { 'user-agent': 'dsh-chat' } });
+      if (!upstream.ok) return fail(res, 502, `GitHub 返回 ${upstream.status}`);
+      const headers = {
+        'content-type': upstream.headers.get('content-type') ?? 'application/octet-stream',
+      };
+      const len = upstream.headers.get('content-length');
+      if (len) headers['content-length'] = len;
+      res.writeHead(200, headers);
+      Readable.fromWeb(upstream.body).pipe(res);
+    } catch (error) {
+      return fail(res, 502, `GitHub 拉取失败：${error.message}`);
+    }
   }
 
   // 「我的资料」：昵称 + 头像，App 各端连上来自动同步。

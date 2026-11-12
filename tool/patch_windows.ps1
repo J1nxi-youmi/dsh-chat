@@ -1,47 +1,34 @@
-# 给 flutter 现生成的 Windows 工程打补丁（CI 里跑）。
+﻿# 给 flutter 现生成的 Windows 工程打补丁（CI 里跑）。
 #
-# 背景：just_audio_windows 0.2.3 的 C++ 走 C++/WinRT + /await 的 <experimental/coroutine>，
-# 新版 MSVC（VS 18 / 14.51）把这条路直接判成错误 STL1011：
-#   error C2338: static assertion failed: 'error STL1011: The /await compiler option,
-#   <experimental/coroutine>, ... are deprecated by Microsoft and will be REMOVED SOON.'
-# 微软给的临时开关就是 _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS。
-#
-# 把它加到 windows/CMakeLists.txt 里（目录级），会继承到 flutter/ 和插件子目录，
-# 从而带进 just_audio_windows 的 vcxproj。
+# 做四件事：
+#   1) CMakeLists 加 _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+#      （just_audio_windows 的 C++/WinRT 在新 MSVC 下报 STL1011）；
+#   2) 窗口标题统一改成 Dshchat；
+#   3) 应用图标换成仓库里的 tool/app_icon.ico；
+#   4) 标题栏开暗色（DWMWA_USE_IMMERSIVE_DARK_MODE），跟 App 主题一致。
 $ErrorActionPreference = 'Stop'
 
 $define = '_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS'
-$cmake = Join-Path (Split-Path -Parent $PSScriptRoot) 'windows/CMakeLists.txt'
+$root = Split-Path -Parent $PSScriptRoot
+$cmake = Join-Path $root 'windows/CMakeLists.txt'
+$mainCpp = Join-Path $root 'windows/runner/main.cpp'
 
+# ---------- 1) CMakeLists ----------
 if (-not (Test-Path -LiteralPath $cmake)) {
     throw "找不到 $cmake（先跑 flutter create --platforms=windows）"
 }
-
-$text = Get-Content -LiteralPath $cmake -Raw
-if ($text -match [regex]::Escape($define)) {
-    Write-Host "windows/CMakeLists.txt 已有 $define，跳过"
+$text = [System.IO.File]::ReadAllText($cmake)
+if ($text.Contains($define)) {
+    Write-Host "CMakeLists 已有 $define，跳过"
 } else {
     $insert = "add_compile_definitions($define)"
-    $patched = [regex]::Replace(
-        $text,
-        '(?m)^project\([^\r\n]*\)\r?\n',
-        { param($m) $m.Value + $insert + "`r`n" },
-        1
-    )
-    if ($patched -eq $text) {
-        throw "windows/CMakeLists.txt 里没找到 project(...) 行，补丁没打上"
-    }
-    # 写回时统一 UTF-8 无 BOM：CMake 不认 BOM，PowerShell 5.1 的 Set-Content 会加。
+    $patched = [regex]::Replace($text, '(?m)^project\([^\r\n]*\)\r?\n', { param($m) $m.Value + $insert + "`r`n" }, 1)
+    if ($patched -eq $text) { throw "CMakeLists 里没找到 project(...) 行" }
     [System.IO.File]::WriteAllText($cmake, $patched, (New-Object System.Text.UTF8Encoding($false)))
-    Write-Host "已给 windows/CMakeLists.txt 加上 $define"
+    Write-Host "CMakeLists 已加 $define"
 }
 
-Write-Host '--- windows/CMakeLists.txt 前 10 行 ---'
-Get-Content -LiteralPath $cmake -TotalCount 10 | ForEach-Object { "  | $_" }
-
-# --- 窗口标题 ---
-# flutter create 生成的标题是项目名（dsh_chat），统一改成 Dshchat。
-$mainCpp = Join-Path (Split-Path -Parent $PSScriptRoot) 'windows/runner/main.cpp'
+# ---------- 2) 窗口标题 ----------
 if (Test-Path -LiteralPath $mainCpp) {
     $mt = [System.IO.File]::ReadAllText($mainCpp)
     $patched = [regex]::Replace($mt, '(Create\(L")[^"]+(")', '$1Dshchat$2')
@@ -51,13 +38,31 @@ if (Test-Path -LiteralPath $mainCpp) {
     }
 }
 
-# --- 应用图标 ---
-# 用仓库里的 tool/app_icon.ico 覆盖 flutter create 生成的默认图标，
-# Runner.rc 引用的是这个路径，exe 图标和 Inno 安装包图标都会跟着变。
-$root = Split-Path -Parent $PSScriptRoot
+# ---------- 3) 应用图标 ----------
 $icoSrc = Join-Path $root 'tool/app_icon.ico'
 $icoDst = Join-Path $root 'windows/runner/resources/app_icon.ico'
 if ((Test-Path -LiteralPath $icoSrc) -and (Test-Path -LiteralPath (Split-Path -Parent $icoDst))) {
     Copy-Item -LiteralPath $icoSrc -Destination $icoDst -Force
     Write-Host "应用图标已替换为 tool/app_icon.ico"
 }
+
+# ---------- 4) 深色标题栏 ----------
+if (Test-Path -LiteralPath $mainCpp) {
+    $mt = [System.IO.File]::ReadAllText($mainCpp)
+    $changed = $false
+    if (-not $mt.Contains('dwmapi.h')) {
+        $mt = $mt.Replace('#include <windows.h>', "#include <windows.h>`n#include <dwmapi.h>`n#pragma comment(lib, `"dwmapi.lib`")")
+        $changed = $true
+    }
+    if (-not $mt.Contains('DWMWA_USE_IMMERSIVE_DARK_MODE')) {
+        $dark = "`n  HWND hwnd = window.GetHandle();`n  BOOL darkTitle = TRUE;`n  DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkTitle, sizeof(darkTitle));"
+        $mt = $mt.Replace('if (!window.Create(L"Dshchat", origin, size)) {', "if (!window.Create(L`"Dshchat`", origin, size)) {" + $dark)
+        $changed = $true
+    }
+    if ($changed) {
+        [System.IO.File]::WriteAllText($mainCpp, $mt, (New-Object System.Text.UTF8Encoding($false)))
+        Write-Host "标题栏已设为暗色（DWMWA_USE_IMMERSIVE_DARK_MODE）"
+    }
+}
+
+Write-Host "--- Windows 补丁完成 ---"

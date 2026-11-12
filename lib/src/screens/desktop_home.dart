@@ -454,7 +454,6 @@ class _DesktopHomeState extends State<DesktopHome> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                ),
               ],
             ),
           ),

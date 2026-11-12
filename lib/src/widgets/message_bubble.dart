@@ -49,12 +49,7 @@ class MessageBubble extends StatelessWidget {
           color: mine ? null : AppTheme.panelAlt.withValues(alpha: 0.92),
           gradient: mine ? AppTheme.accentGradient : null,
           border: mine ? null : Border.all(color: AppTheme.line),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(mine ? 16 : 5),
-            bottomRight: Radius.circular(mine ? 5 : 16),
-          ),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

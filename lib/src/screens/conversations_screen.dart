@@ -150,29 +150,6 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: TextField(
-              controller: _search,
-              onChanged: (value) => setState(() => _query = value),
-              style: const TextStyle(fontSize: 13),
-              decoration: InputDecoration(
-                hintText: '搜索会话',
-                isDense: true,
-                prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppTheme.muted),
-                filled: true,
-                fillColor: AppTheme.panelAlt,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              ),
-            ),
-          ),
-        ),
         title: Row(
           children: [
             AnimatedBuilder(
@@ -190,11 +167,15 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            AnimatedBuilder(
-              animation: AppProfile.instance,
-              builder: (context, _) => Text(
-                AppProfile.instance.displayName,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            Expanded(
+              child: AnimatedBuilder(
+                animation: AppProfile.instance,
+                builder: (context, _) => Text(
+                  AppProfile.instance.displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                ),
               ),
             ),
           ],
@@ -217,16 +198,40 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         ],
       ),
       body: StarryBackground(
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: _body(),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: TextField(
+                controller: _search,
+                onChanged: (value) => setState(() => _query = value),
+                style: const TextStyle(fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: '搜索会话',
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppTheme.muted),
+                  filled: true,
+                  fillColor: AppTheme.panelAlt,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                ),
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _load,
+                child: _body(),
+              ),
+            ),
+          ],
         ),
       ),
-      bottomNavigationBar: BottomAppBar(
-        height: 28,
+      bottomNavigationBar: Container(
+        height: 26,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        color: AppTheme.panel,
-        elevation: 0,
         child: Row(
           children: [
             Icon(Icons.circle, size: 7, color: _connected ? const Color(0xFF3DD68C) : AppTheme.muted),
@@ -237,8 +242,6 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                   : '连接中…',
               style: const TextStyle(fontSize: 11, color: AppTheme.muted),
             ),
-            const Spacer(),
-            const Text('Dshchat', style: TextStyle(fontSize: 11, color: AppTheme.muted)),
           ],
         ),
       ),

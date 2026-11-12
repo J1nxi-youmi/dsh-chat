@@ -8,6 +8,10 @@ import { createBridgeServer } from './bridge/server.js';
 /** Cordis 插件名。 */
 export const name = 'chat';
 
+/** 插件描述：DSH 插件列表里显示的那行字。 */
+export const description =
+  '聊天客户端后端：手机/桌面 App + 网页端，消息可靠投递（断线补发），我的资料云同步，App 内热更新。';
+
 /** 二合一：聊天服务自己跑 DSH 会话，所以要模型和会话注册表。 */
 export const inject = ['llm', 'agents'];
 

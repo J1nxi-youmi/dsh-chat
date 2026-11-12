@@ -190,11 +190,6 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             ),
             icon: const Icon(Icons.settings_outlined),
           ),
-          IconButton(
-            tooltip: '换一台 DSH',
-            onPressed: _switchServer,
-            icon: const Icon(Icons.dns_rounded),
-          ),
         ],
       ),
       body: StarryBackground(
@@ -226,21 +221,20 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                 child: _body(),
               ),
             ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: Container(
-        height: 26,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            Icon(Icons.circle, size: 7, color: _connected ? const Color(0xFF3DD68C) : AppTheme.muted),
-            const SizedBox(width: 6),
-            Text(
-              _connected
-                  ? (_latency == null ? '在线' : '在线 · $_latency ms')
-                  : '连接中…',
-              style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: Row(
+                children: [
+                  Icon(Icons.circle, size: 7, color: _connected ? const Color(0xFF3DD68C) : AppTheme.muted),
+                  const SizedBox(width: 6),
+                  Text(
+                    _connected
+                        ? (_latency == null ? '在线' : '在线 · $_latency ms')
+                        : '连接中…',
+                    style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

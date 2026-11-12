@@ -97,7 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ListTile(
               leading: const Icon(Icons.person_rounded, color: AppTheme.muted),
               title: const Text('我的资料'),
-              subtitle: const Text('头像和昵称，只保存在这台设备'),
+              subtitle: const Text('会同步到你的 DSH，所有设备保持一致'),
               onTap: () => showDialog<void>(
                 context: context,
                 builder: (_) => ProfileDialog(api: widget.api),

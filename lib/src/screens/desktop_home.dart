@@ -454,20 +454,6 @@ class _DesktopHomeState extends State<DesktopHome> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.circle,
-                      size: 6,
-                      color: _connected ? const Color(0xFF3DD68C) : AppTheme.muted,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      _connected ? '在线 · 本地直连' : '连接中…',
-                      style: const TextStyle(fontSize: 11, color: AppTheme.muted),
-                    ),
-                  ],
                 ),
               ],
             ),

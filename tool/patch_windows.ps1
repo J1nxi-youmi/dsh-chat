@@ -54,10 +54,14 @@ if (Test-Path -LiteralPath $mainCpp) {
         $mt = $mt.Replace('#include <windows.h>', "#include <windows.h>`n#include <dwmapi.h>`n#pragma comment(lib, `"dwmapi.lib`")")
         $changed = $true
     }
-    if (-not $mt.Contains('DWMWA_USE_IMMERSIVE_DARK_MODE')) {
-        $dark = "`n  HWND hwnd = window.GetHandle();`n  BOOL darkTitle = TRUE;`n  DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkTitle, sizeof(darkTitle));"
+    # 幂等：双保险已存在就跳过，避免重复累积。
+    if (-not $mt.Contains('DwmSetWindowAttribute(hwnd, 20,')) {
+        $dark = "`n  HWND hwnd = window.GetHandle();`n  BOOL darkTitle = TRUE;`n  DwmSetWindowAttribute(hwnd, 20, &darkTitle, sizeof(darkTitle));`n  DwmSetWindowAttribute(hwnd, 19, &darkTitle, sizeof(darkTitle));"
         $mt = $mt.Replace('if (!window.Create(L"Dshchat", origin, size)) {', "if (!window.Create(L`"Dshchat`", origin, size)) {" + $dark)
-        $changed = $true
+        [System.IO.File]::WriteAllText($mainCpp, $mt, (New-Object System.Text.UTF8Encoding($false)))
+        Write-Host "标题栏暗色已写入（20/19 双保险）"
+    } else {
+        Write-Host "标题栏暗色已存在，跳过"
     }
     if ($changed) {
         [System.IO.File]::WriteAllText($mainCpp, $mt, (New-Object System.Text.UTF8Encoding($false)))

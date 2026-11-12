@@ -10,7 +10,6 @@ import '../theme.dart';
 import 'chat_screen.dart';
 import 'profile_dialog.dart';
 import 'settings_screen.dart';
-import 'settings_screen.dart';
 
 class ConversationsScreen extends StatefulWidget {
   const ConversationsScreen({

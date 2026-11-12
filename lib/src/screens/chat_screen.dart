@@ -900,19 +900,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: _isDesktop
-            ? null
-            : const BoxDecoration(
-                color: AppTheme.panel,
-                border: Border(top: BorderSide(color: AppTheme.line)),
-              ),
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (_recording) _recordingHint(),
+            // 星伴样式：单个大圆角框直接放在星空上，输入行 + 按钮行。
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
+              padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
+              decoration: BoxDecoration(
+                color: AppTheme.panel.withValues(alpha: 0.72),
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Column(
                 children: [
                   if (_pending.isNotEmpty) _pendingStrip(),
@@ -933,7 +932,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
                     ),

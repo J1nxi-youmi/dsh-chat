@@ -637,16 +637,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final body = StarryBackground(
-      child: Column(
-        children: [
-          if (!_connected) _connectionBanner(),
-          if (_uploading > 0) _uploadBanner(),
-          Expanded(child: _messageList()),
-          _composer(),
-        ],
-      ),
+    final inner = Column(
+      children: [
+        if (!_connected) _connectionBanner(),
+        if (_uploading > 0) _uploadBanner(),
+        Expanded(child: _messageList()),
+        _composer(),
+      ],
     );
+    // 桌面 embedded：背景由最外层（desktop_home）统一绘制，这里保持透明，
+    // 避免两层星空叠出黑竖条；手机端自己画星空。
+    final body = _isDesktop ? inner : StarryBackground(child: inner);
     // 桌面端：整块聊天区都能接住拖进来的文件。
     final content = _isDesktop
         ? DropTarget(

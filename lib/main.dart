@@ -25,7 +25,7 @@ Future<void> main() async {
       size: Size(980, 660),
       minimumSize: Size(780, 560),
       center: true,
-      title: 'dsh-chat',
+      title: 'Dshchat',
       titleBarStyle: TitleBarStyle.normal,
     );
     await windowManager.waitUntilReadyToShow(options, () async {

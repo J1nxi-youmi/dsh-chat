@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -30,18 +32,43 @@ class ConversationsScreen extends StatefulWidget {
 class _ConversationsScreenState extends State<ConversationsScreen> {
   List<Conversation> _items = const [];
   bool _loading = true;
+  final TextEditingController _search = TextEditingController();
+  String _query = '';
+  int? _latency;
+  bool _connected = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _connected = widget.api.connected.value;
+    widget.api.connected.addListener(_onConnection);
     _load();
+  }
+
+  void _onConnection() {
+    if (!mounted) return;
+    setState(() => _connected = widget.api.connected.value);
+    if (_connected) unawaited(_measureLatency());
+  }
+
+  @override
+  void dispose() {
+    widget.api.connected.removeListener(_onConnection);
+    _search.dispose();
+    super.dispose();
+  }
+
+  Future<void> _measureLatency() async {
+    final ms = await widget.api.measureLatency();
+    if (mounted) setState(() => _latency = ms);
   }
 
   Future<void> _load() async {
     try {
       final items = await widget.api.conversations();
       if (!mounted) return;
+      unawaited(_measureLatency());
       setState(() {
         _items = items;
         _error = null;
@@ -123,6 +150,29 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              controller: _search,
+              onChanged: (value) => setState(() => _query = value),
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                hintText: '搜索会话',
+                isDense: true,
+                prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppTheme.muted),
+                filled: true,
+                fillColor: AppTheme.panelAlt,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+            ),
+          ),
+        ),
         title: Row(
           children: [
             AnimatedBuilder(
@@ -140,7 +190,13 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            const Text('聊天'),
+            AnimatedBuilder(
+              animation: AppProfile.instance,
+              builder: (context, _) => Text(
+                AppProfile.instance.displayName,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+            ),
           ],
         ),
         actions: [
@@ -166,12 +222,42 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           child: _body(),
         ),
       ),
+      bottomNavigationBar: BottomAppBar(
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        color: AppTheme.panel,
+        elevation: 0,
+        child: Row(
+          children: [
+            Icon(Icons.circle, size: 7, color: _connected ? const Color(0xFF3DD68C) : AppTheme.muted),
+            const SizedBox(width: 6),
+            Text(
+              _connected
+                  ? (_latency == null ? '在线' : '在线 · $_latency ms')
+                  : '连接中…',
+              style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+            ),
+            const Spacer(),
+            const Text('Dshchat', style: TextStyle(fontSize: 11, color: AppTheme.muted)),
+          ],
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _create,
         backgroundColor: AppTheme.accent,
         child: const Icon(Icons.add_comment_rounded),
       ),
     );
+  }
+
+  List<Conversation> get _filtered {
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return _items;
+    return _items
+        .where((item) =>
+            item.title.toLowerCase().contains(query) ||
+            item.preview.toLowerCase().contains(query))
+        .toList();
   }
 
   Widget _body() {
@@ -192,7 +278,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         ],
       );
     }
-    if (_items.isEmpty) {
+    if (_filtered.isEmpty) {
       return ListView(
         children: const [
           SizedBox(height: 100),
@@ -204,10 +290,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       );
     }
     return ListView.separated(
-      itemCount: _items.length,
+      itemCount: _filtered.length,
       separatorBuilder: (_, __) => const Divider(height: 1, indent: 76),
       itemBuilder: (context, index) {
-        final conversation = _items[index];
+        final conversation = _filtered[index];
         return ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           leading: AvatarBadge(name: conversation.title),

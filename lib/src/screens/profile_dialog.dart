@@ -20,7 +20,7 @@ class ProfileDialog extends StatefulWidget {
 
 class _ProfileDialogState extends State<ProfileDialog> {
   late final TextEditingController _name =
-      TextEditingController(text: AppProfile.instance.nickname);
+      TextEditingController(text: AppProfile.instance.displayName);
   bool _saving = false;
 
   @override
@@ -112,7 +112,7 @@ class _ProfileDialogState extends State<ProfileDialog> {
           ),
           const SizedBox(height: 8),
           const Text(
-            '昵称和头像会保存在这台设备上，换设备需要重新设置。',
+            '昵称和头像会同步到你的 DSH，所有设备自动保持一致。',
             style: TextStyle(fontSize: 11, color: AppTheme.muted),
           ),
         ],

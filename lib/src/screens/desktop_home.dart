@@ -35,8 +35,10 @@ class _DesktopHomeState extends State<DesktopHome> {
   bool _loading = true;
   String? _error;
   bool _connected = false;
+  int? _latency;
   StreamSubscription<Map<String, dynamic>>? _events;
   Timer? _refreshTimer;
+  Timer? _latencyTimer;
 
   @override
   void initState() {
@@ -49,16 +51,23 @@ class _DesktopHomeState extends State<DesktopHome> {
       _refreshTimer?.cancel();
       _refreshTimer = Timer(const Duration(milliseconds: 600), _load);
     });
+    _latencyTimer = Timer.periodic(const Duration(seconds: 30), (_) => _measureLatency());
     _load();
   }
 
   @override
   void dispose() {
+    _latencyTimer?.cancel();
     widget.api.connected.removeListener(_onConnection);
     _events?.cancel();
     _refreshTimer?.cancel();
     _search.dispose();
     super.dispose();
+  }
+
+  Future<void> _measureLatency() async {
+    final ms = await widget.api.measureLatency();
+    if (mounted) setState(() => _latency = ms);
   }
 
   void _onConnection() {
@@ -253,9 +262,14 @@ class _DesktopHomeState extends State<DesktopHome> {
             padding: const EdgeInsets.fromLTRB(16, 18, 12, 10),
             child: Row(
               children: [
-                const Expanded(
-                  child: Text('消息',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                Expanded(
+                  child: AnimatedBuilder(
+                    animation: AppProfile.instance,
+                    builder: (context, _) => Text(
+                      AppProfile.instance.displayName,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                  ),
                 ),
                 IconButton(
                   tooltip: '新对话',
@@ -303,11 +317,13 @@ class _DesktopHomeState extends State<DesktopHome> {
                 Icon(Icons.circle, size: 7, color: _connected ? const Color(0xFF3DD68C) : AppTheme.muted),
                 const SizedBox(width: 6),
                 Text(
-                  _connected ? '在线 · 直连' : '连接中…',
+                  _connected
+                      ? (_latency == null ? '在线' : '在线 · $_latency ms')
+                      : '连接中…',
                   style: const TextStyle(fontSize: 11, color: AppTheme.muted),
                 ),
                 const Spacer(),
-                const Text('dsh-chat', style: TextStyle(fontSize: 11, color: AppTheme.muted)),
+                const Text('Dshchat', style: TextStyle(fontSize: 11, color: AppTheme.muted)),
               ],
             ),
           ),

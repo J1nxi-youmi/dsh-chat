@@ -40,7 +40,7 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _input = TextEditingController();
   final _inputFocus = FocusNode();
   final _scroll = ScrollController();
@@ -76,6 +76,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     activeConversationId.value = widget.conversationId;
     _connected = widget.api.connected.value;
     widget.api.connected.addListener(_onConnection);
@@ -89,6 +90,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onGlobalKey);
     if (activeConversationId.value == widget.conversationId) {
       activeConversationId.value = null;
@@ -114,6 +116,14 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     unawaited(_pasteFromClipboard());
     return false;
+  }
+
+  @override
+  void didChangeMetrics() {
+    // 键盘弹出/收起时可视高度变化，滚到底避免最新消息被输入框挡住。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _jumpToBottom();
+    });
   }
 
   bool get _canSend => _input.text.trim().isNotEmpty || _pending.isNotEmpty;
@@ -499,7 +509,10 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     await _saveOutbox();
     await _deliver(item);
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+      _jumpToBottom();
+    }
   }
 
   // ---------------------------------------------------------------- 未 ack 队列

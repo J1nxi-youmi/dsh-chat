@@ -37,7 +37,7 @@ class MessageBubble extends StatelessWidget {
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!mine) avatar,
           Flexible(
@@ -297,7 +297,7 @@ class _Avatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final image = mine ? AppProfile.instance.avatarImage : null;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(top: 2),
       child: AvatarBadge(
         name: mine ? AppProfile.instance.displayName : '',
         size: 30,

@@ -201,6 +201,17 @@ class ChatApi {
     });
   }
 
+  /// 量一次 /healthz 的往返延迟（毫秒）；失败返回 null。
+  Future<int?> measureLatency() async {
+    try {
+      final sw = Stopwatch()..start();
+      await _send('GET', '/healthz');
+      return sw.elapsedMilliseconds;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// 连 SSE，断了自己重连。重复调用无副作用。
   void startEvents() {
     if (_eventsStarted) return;

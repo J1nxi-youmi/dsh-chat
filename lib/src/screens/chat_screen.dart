@@ -44,7 +44,7 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => ChatScreenState();
 }
 
-class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
+class ChatScreenState extends State<ChatScreen> {
   final _input = TextEditingController();
   final _inputFocus = FocusNode();
   final _itemScroll = ItemScrollController();
@@ -52,8 +52,6 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _recorder = AudioRecorder();
   bool _atBottom = true;
   int _unreadBelow = 0;
-  double _lastKeyboardInset = 0;
-  Timer? _keyboardSettleTimer;
 
   bool get _isDesktop =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
@@ -88,7 +86,6 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     activeConversationId.value = widget.conversationId;
     _connected = widget.api.connected.value;
     widget.api.connected.addListener(_onConnection);
@@ -103,7 +100,6 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onGlobalKey);
     if (activeConversationId.value == widget.conversationId) {
       activeConversationId.value = null;
@@ -113,7 +109,6 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _input.removeListener(_onInputChanged);
     _events?.cancel();
     _ticker?.cancel();
-    _keyboardSettleTimer?.cancel();
     _recorder.dispose();
     _input.dispose();
     _inputFocus.dispose();
@@ -130,26 +125,6 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
     unawaited(_pasteFromClipboard());
     return false;
-  }
-
-  @override
-  void didChangeMetrics() {
-    _scheduleKeyboardSettle();
-  }
-
-  /// 键盘动画会连续触发多次 metrics；等最后一次 inset 变化结束后再校准，
-  /// 避免列表停在键盘动画中间的高度、收起后底部留空。
-  void _scheduleKeyboardSettle({bool force = false}) {
-    _keyboardSettleTimer?.cancel();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (force || _atBottom || _inputFocus.hasFocus) _jumpToBottom();
-    });
-    _keyboardSettleTimer = Timer(const Duration(milliseconds: 360), () {
-      if (mounted && (force || _atBottom || _inputFocus.hasFocus)) {
-        _jumpToBottom();
-      }
-    });
   }
 
   bool get _canSend => _input.text.trim().isNotEmpty || _pending.isNotEmpty;
@@ -224,12 +199,8 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         }
       });
       final added = _messages.length - before;
-      if (added <= 0) return;
-      if (_atBottom) {
-        _jumpToBottom();
-      } else {
-        setState(() => _unreadBelow += added);
-      }
+      if (added <= 0 || _atBottom) return;
+      setState(() => _unreadBelow += added);
     } catch (_) {
       /* 下次重连再补 */
     }
@@ -263,12 +234,8 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
     final before = _messages.length;
     setState(() => _merge(message));
-    if (_messages.length <= before) return;
-    if (_atBottom) {
-      _jumpToBottom();
-    } else {
-      setState(() => _unreadBelow += 1);
-    }
+    if (_messages.length <= before || _atBottom) return;
+    setState(() => _unreadBelow += 1);
   }
 
   void _jumpToBottom({int attempt = 0}) {
@@ -698,7 +665,6 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           _merge(reply);
         }
       });
-      _jumpToBottom();
       return true;
     } catch (error) {
       item.status = 'failed';
@@ -736,7 +702,10 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     item.status = 'sending';
     if (mounted) setState(() {});
     await _deliver(item);
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+      _jumpToBottom();
+    }
   }
 
   void _toast(String message) {
@@ -773,12 +742,6 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
-    if (keyboardInset != _lastKeyboardInset) {
-      final closing = _lastKeyboardInset > 0 && keyboardInset == 0;
-      _lastKeyboardInset = keyboardInset;
-      _scheduleKeyboardSettle(force: closing);
-    }
     final inner = Column(
       children: [
         if (!_connected) _connectionBanner(),

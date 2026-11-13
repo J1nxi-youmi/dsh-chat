@@ -1,10 +1,10 @@
 ; dsh-chat 的 Windows 安装包（Inno Setup）。
-; 在 CI 里由 build-windows.yml 调用：
+; 在 CI 里由 build.yml 调用：
 ;   ISCC.exe /DAppVersion=<version> installer\windows.iss
 ; 支持：自定义安装目录、桌面快捷方式、开始菜单、卸载。
 
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "1.2.2"
 #endif
 
 #define AppName "青屿"

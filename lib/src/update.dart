@@ -31,9 +31,7 @@ class UpdateInfo {
 
   /// 构建号只藏在 release 正文的 HTML 注释里，不显示给用户。
   int get buildNumber {
-    final match =
-        RegExp(r'<!--\s*build:(\d+)\s*-->').firstMatch(body) ??
-        RegExp(r'构建\s*#(\d+)').firstMatch(body);
+    final match = RegExp(r'<!--\s*build:(\d+)\s*-->').firstMatch(body);
     return int.tryParse(match?.group(1) ?? '') ?? 0;
   }
 
@@ -54,10 +52,10 @@ class UpdateInfo {
 class UpdateService {
   static const defaultSource = 'https://github.com/J1nxi-youmi/dsh-chat';
   // CI 把构建号拆成版本号：构建 #122 -> 1.2.2，显示 v1.2.2。
-  // 本地构建没注入时退化成 v0.3.0。
+  // 本地构建没注入时用当前基线。
   static const appVersion = String.fromEnvironment(
     'APP_VERSION',
-    defaultValue: '0.3.0',
+    defaultValue: '1.2.2',
   );
   static const appBuild = int.fromEnvironment('APP_BUILD', defaultValue: 0);
 

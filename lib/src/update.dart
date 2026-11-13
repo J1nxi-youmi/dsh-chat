@@ -51,7 +51,8 @@ class UpdateInfo {
 /// 查更新、下载、拉起安装。
 class UpdateService {
   static const defaultSource = 'https://github.com/J1nxi-youmi/dsh-chat';
-  // CI 每次注入 0.2.<构建号>，本地构建没注入时退化成 0.2.0。
+  // CI 注入 x.xx.xx 版本号（0.10.10 之后进位为 1.01.01），
+  // 本地构建没注入时退化成 0.3.0。
   static const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.3.0');
   static const appBuild = int.fromEnvironment('APP_BUILD', defaultValue: 0);
 

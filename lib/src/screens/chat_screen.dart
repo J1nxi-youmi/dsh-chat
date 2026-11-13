@@ -46,7 +46,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _scroll = ScrollController();
   final _recorder = AudioRecorder();
 
-  bool get _isDesktop => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  bool get _isDesktop =>
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   /// 长按录音的状态：按下的位置、是否已经上滑取消。
   Offset? _recordPointer;
@@ -57,9 +58,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final int _uploading = 0;
 
   List<Message> _messages = const [];
+
   /// 待发送附件：先显示本地预览，上传在后台跑，点发送时若还没传完就等它。
   final List<_PendingItem> _pending = [];
   final List<Future<void>> _uploadJobs = [];
+
   /// 还没被 ack 的消息；断线/重启后按顺序重发。
   final List<Outgoing> _outbox = [];
   int _lastSeq = 0;
@@ -148,7 +151,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() {
         _messages = conversation.messages;
-        _lastSeq = _messages.fold(0, (max, item) => item.seq > max ? item.seq : max);
+        _lastSeq = _messages.fold(
+          0,
+          (max, item) => item.seq > max ? item.seq : max,
+        );
         _error = null;
       });
       _jumpToBottom();
@@ -163,7 +169,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   /// 从服务端补 seq 大于本地游标的消息。
   Future<void> _syncSince() async {
     try {
-      final fresh = await widget.api.messagesSince(widget.conversationId, _lastSeq);
+      final fresh = await widget.api.messagesSince(
+        widget.conversationId,
+        _lastSeq,
+      );
       if (!mounted || fresh.isEmpty) return;
       setState(() {
         for (final message in fresh) {
@@ -186,7 +195,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       _outbox.removeWhere((item) => item.clientMessageId == echoed);
       if (_outbox.length != before) unawaited(_saveOutbox());
     }
-    _messages = [..._messages, message]..sort((left, right) => left.seq.compareTo(right.seq));
+    _messages = [..._messages, message]
+      ..sort((left, right) => left.seq.compareTo(right.seq));
     if (message.seq > _lastSeq) _lastSeq = message.seq;
   }
 
@@ -216,15 +226,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     });
   }
 
-
   Future<void> _pickFiles({bool imagesOnly = false}) async {
     try {
       // file_picker 13.x：pickFiles 直接返回 List<PlatformFile>（多选默认开），
       // 字节要自己 readAsBytes()，没有 withData 参数了。
-      final files = await FilePicker.pickFiles(type: imagesOnly ? FileType.image : FileType.any);
+      final files = await FilePicker.pickFiles(
+        type: imagesOnly ? FileType.image : FileType.any,
+      );
       for (final file in files) {
         final bytes = await file.readAsBytes();
-        unawaited(_uploadBytes(name: file.name, mime: _guessMime(file.name), bytes: bytes));
+        unawaited(
+          _uploadBytes(
+            name: file.name,
+            mime: _guessMime(file.name),
+            bytes: bytes,
+          ),
+        );
       }
     } catch (error) {
       _toast(error.toString());
@@ -255,7 +272,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
     // 先上屏：本地字节直接当预览，上传放后台，不用等隧道一个来回。
     final isImage = mime.startsWith('image/');
-    final item = _PendingItem(name: name, bytes: data, isImage: isImage, isVoice: kind == 'voice');
+    final item = _PendingItem(
+      name: name,
+      bytes: data,
+      isImage: isImage,
+      isVoice: kind == 'voice',
+    );
     if (mounted) setState(() => _pending.add(item));
     final job = () async {
       try {
@@ -264,7 +286,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           mime: mimeType,
           bytes: data,
           kind: kind ?? (isImage ? 'image' : 'file'),
-          textPreview: _isText(name) ? String.fromCharCodes(data.take(4000)) : null,
+          textPreview: _isText(name)
+              ? String.fromCharCodes(data.take(4000))
+              : null,
         );
         item.attachment = attachment;
       } catch (error) {
@@ -291,11 +315,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           continue;
         }
         final bytes = await file.readAsBytes();
-        unawaited(_uploadBytes(
-          name: file.name.isEmpty ? '拖入文件' : file.name,
-          mime: file.mimeType ?? _guessMime(file.name),
-          bytes: bytes,
-        ));
+        unawaited(
+          _uploadBytes(
+            name: file.name.isEmpty ? '拖入文件' : file.name,
+            mime: file.mimeType ?? _guessMime(file.name),
+            bytes: bytes,
+          ),
+        );
       } on PathAccessException catch (error) {
         _toast('这个路径读不了（${error.path ?? '未知'}），可能没权限');
       } catch (error) {
@@ -308,7 +334,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Future<void> _uploadDirectory(Directory directory) async {
     final files = <File>[];
     try {
-      await for (final entity in directory.list(recursive: true, followLinks: false)) {
+      await for (final entity in directory.list(
+        recursive: true,
+        followLinks: false,
+      )) {
         if (entity is File) files.add(entity);
       }
     } catch (error) {
@@ -326,11 +355,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     for (final file in files) {
       try {
         final name = file.uri.pathSegments.last;
-        unawaited(_uploadBytes(
-          name: name,
-          mime: _guessMime(name),
-          bytes: await file.readAsBytes(),
-        ));
+        unawaited(
+          _uploadBytes(
+            name: name,
+            mime: _guessMime(name),
+            bytes: await file.readAsBytes(),
+          ),
+        );
       } catch (error) {
         _toast('跳过 ${file.path}：$error');
       }
@@ -353,11 +384,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       for (final path in files) {
         final file = File(path);
         if (!await file.exists()) continue;
-        unawaited(_uploadBytes(
-          name: file.uri.pathSegments.isEmpty ? '粘贴的文件' : file.uri.pathSegments.last,
-          mime: _guessMime(path),
-          bytes: await file.readAsBytes(),
-        ));
+        unawaited(
+          _uploadBytes(
+            name: file.uri.pathSegments.isEmpty
+                ? '粘贴的文件'
+                : file.uri.pathSegments.last,
+            mime: _guessMime(path),
+            bytes: await file.readAsBytes(),
+          ),
+        );
       }
       // 没图没文件就不吭声：剪贴板里的文字由输入框自己粘贴，不用打扰。
     } catch (error) {
@@ -377,10 +412,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       return;
     }
     final dir = await getTemporaryDirectory();
-    final path = '${dir.path}/voice-${DateTime.now().millisecondsSinceEpoch}.wav';
+    final path =
+        '${dir.path}/voice-${DateTime.now().millisecondsSinceEpoch}.wav';
     try {
       await _recorder.start(
-        const RecordConfig(encoder: AudioEncoder.wav, sampleRate: 16000, numChannels: 1),
+        const RecordConfig(
+          encoder: AudioEncoder.wav,
+          sampleRate: 16000,
+          numChannels: 1,
+        ),
         path: path,
       );
     } catch (error) {
@@ -437,12 +477,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         kind: 'voice',
         duration: duration,
       );
-      setState(() => _pending.add(_PendingItem(
+      setState(
+        () => _pending.add(
+          _PendingItem(
             name: attachment.name,
             bytes: bytes,
             isImage: false,
             isVoice: true,
-          )..attachment = attachment));
+          )..attachment = attachment,
+        ),
+      );
       await _send();
     } catch (error) {
       _toast(error.toString());
@@ -490,7 +534,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     // 还有没传完的附件就把它们等完，最多再等 30 秒。
     if (_uploadJobs.isNotEmpty) {
       _toast('正在上传附件…');
-      await Future.wait(_uploadJobs).timeout(const Duration(seconds: 30), onTimeout: () => []);
+      await Future.wait(
+        _uploadJobs,
+      ).timeout(const Duration(seconds: 30), onTimeout: () => []);
     }
     final readyAttachments = _pending
         .map((item) => item.attachment)
@@ -561,10 +607,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       final result = await widget.api.sendMessage(
         widget.conversationId,
         text: item.text,
-        attachmentIds: item.attachments.map((attachment) => attachment.id).toList(),
+        attachmentIds: item.attachments
+            .map((attachment) => attachment.id)
+            .toList(),
         clientMessageId: item.clientMessageId,
       );
-      _outbox.removeWhere((entry) => entry.clientMessageId == item.clientMessageId);
+      _outbox.removeWhere(
+        (entry) => entry.clientMessageId == item.clientMessageId,
+      );
       await _saveOutbox();
       if (!mounted) return true;
       setState(() {
@@ -592,7 +642,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _flushing = true;
     try {
       for (final item in [..._outbox]) {
-        if (!_outbox.any((entry) => entry.clientMessageId == item.clientMessageId)) continue;
+        if (!_outbox.any(
+          (entry) => entry.clientMessageId == item.clientMessageId,
+        )) {
+          continue;
+        }
         item.status = 'sending';
         if (mounted) setState(() {});
         final ok = await _deliver(item);
@@ -612,7 +666,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _guessMime(String name) {
@@ -623,7 +679,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     if (lower.endsWith('.gif')) return 'image/gif';
     if (lower.endsWith('.wav')) return 'audio/wav';
     if (lower.endsWith('.mp3')) return 'audio/mpeg';
-    if (lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.json')) {
+    if (lower.endsWith('.txt') ||
+        lower.endsWith('.md') ||
+        lower.endsWith('.json')) {
       return 'text/plain';
     }
     return 'application/octet-stream';
@@ -631,8 +689,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   bool _isText(String name) {
     final lower = name.toLowerCase();
-    return lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.json') ||
-        lower.endsWith('.csv') || lower.endsWith('.log');
+    return lower.endsWith('.txt') ||
+        lower.endsWith('.md') ||
+        lower.endsWith('.json') ||
+        lower.endsWith('.csv') ||
+        lower.endsWith('.log');
   }
 
   @override
@@ -654,21 +715,58 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             onDragEntered: (_) => setState(() => _dragging = true),
             onDragExited: (_) => setState(() => _dragging = false),
             onDragDone: _handleDropped,
-            child: Stack(
-              children: [
-                body,
-                if (_dragging) _dropOverlay(),
-              ],
-            ),
+            child: Stack(children: [body, if (_dragging) _dropOverlay()]),
           )
         : body;
     if (widget.embedded) return content;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title, overflow: TextOverflow.ellipsis),
+        backgroundColor: AppTheme.panel,
+        surfaceTintColor: Colors.transparent,
+        titleSpacing: 4,
+        title: Row(
+          children: [
+            AvatarBadge(name: widget.title, size: 32),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.text,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    '在呢，随时聊',
+                    style: TextStyle(fontSize: 10, color: AppTheme.muted),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
-          IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
+          IconButton(
+            tooltip: '刷新',
+            onPressed: _load,
+            icon: const Icon(
+              Icons.refresh_rounded,
+              size: 20,
+              color: AppTheme.muted,
+            ),
+          ),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: AppTheme.line),
+        ),
       ),
       body: content,
     );
@@ -680,12 +778,19 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         child: Container(
           decoration: BoxDecoration(
             color: AppTheme.accent.withValues(alpha: 0.10),
-            border: Border.all(color: AppTheme.accent.withValues(alpha: 0.7), width: 2),
+            border: Border.all(
+              color: AppTheme.accent.withValues(alpha: 0.7),
+              width: 2,
+            ),
           ),
           alignment: Alignment.center,
           child: const Text(
             '松开，把文件发给她',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.text),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.text,
+            ),
           ),
         ),
       ),
@@ -723,10 +828,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           SizedBox(
             width: 12,
             height: 12,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE8B93E)),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Color(0xFFE8B93E),
+            ),
           ),
           SizedBox(width: 8),
-          Text('连接中断，正在重连…', style: TextStyle(fontSize: 12, color: Color(0xFFE8B93E))),
+          Text(
+            '连接中断，正在重连…',
+            style: TextStyle(fontSize: 12, color: Color(0xFFE8B93E)),
+          ),
         ],
       ),
     );
@@ -745,39 +856,42 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ),
       );
     }
-    return ListView.builder(
-      controller: _scroll,
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
-      itemCount: _messages.length + _outbox.length + (_sending ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index < _messages.length) {
-          final message = _messages[index];
-          final bubble = MessageBubble(
-            message: message,
-            mediaUrl: widget.api.mediaUrl,
-          );
-          // 跨天或隔了 5 分钟以上，插一条时间分隔。
-          return _needsDivider(index)
-              ? Column(
-                  children: [
-                    _timeDivider(message.at),
-                    bubble,
-                  ],
-                )
-              : bubble;
-        }
-        final outboxIndex = index - _messages.length;
-        if (outboxIndex < _outbox.length) {
-          final item = _outbox[outboxIndex];
-          return MessageBubble(
-            message: item.asMessage(),
-            mediaUrl: widget.api.mediaUrl,
-            status: item.status,
-            onRetry: item.status == 'failed' ? () => _retry(item) : null,
-          );
-        }
-        return const TypingRow();
-      },
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: _isDesktop ? 780 : double.infinity,
+        ),
+        child: ListView.builder(
+          controller: _scroll,
+          padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
+          itemCount: _messages.length + _outbox.length + (_sending ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index < _messages.length) {
+              final message = _messages[index];
+              final bubble = MessageBubble(
+                message: message,
+                mediaUrl: widget.api.mediaUrl,
+              );
+              // 跨天或隔了 5 分钟以上，插一条时间分隔。
+              return _needsDivider(index)
+                  ? Column(children: [_timeDivider(message.at), bubble])
+                  : bubble;
+            }
+            final outboxIndex = index - _messages.length;
+            if (outboxIndex < _outbox.length) {
+              final item = _outbox[outboxIndex];
+              return MessageBubble(
+                message: item.asMessage(),
+                mediaUrl: widget.api.mediaUrl,
+                status: item.status,
+                onRetry: item.status == 'failed' ? () => _retry(item) : null,
+              );
+            }
+            return const TypingRow();
+          },
+        ),
+      ),
     );
   }
 
@@ -843,14 +957,19 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               Container(
                 width: isImage ? 64 : null,
                 height: isImage ? 64 : null,
-                padding: isImage ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: isImage
+                    ? EdgeInsets.zero
+                    : const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppTheme.panelAlt,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppTheme.line),
                   image: isImage && item.bytes != null
                       ? DecorationImage(
-                          image: Image.memory(item.bytes!, fit: BoxFit.cover).image,
+                          image: Image.memory(
+                            item.bytes!,
+                            fit: BoxFit.cover,
+                          ).image,
                           fit: BoxFit.cover,
                         )
                       : null,
@@ -858,12 +977,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 alignment: Alignment.center,
                 child: isImage
                     ? (item.bytes == null
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const SizedBox.shrink())
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const SizedBox.shrink())
                     : Text(
-                        item.isVoice
-                            ? '🎙️ 语音'
-                            : '📎 ${item.name}',
+                        item.isVoice ? '🎙️ 语音' : '📎 ${item.name}',
                         style: const TextStyle(fontSize: 12),
                       ),
               ),
@@ -885,8 +1006,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   child: Container(
                     width: 18,
                     height: 18,
-                    decoration: const BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
-                    child: const Icon(Icons.close_rounded, size: 12, color: Colors.white),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.error,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 12,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -906,86 +1034,131 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (_recording) _recordingHint(),
-            // 星伴样式：单个大圆角框直接放在星空上，输入行 + 按钮行。
-            Container(
-              padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
-              decoration: BoxDecoration(
-                color: AppTheme.panel.withValues(alpha: 0.72),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  if (_pending.isNotEmpty) _pendingStrip(),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 120),
-                    child: Focus(
-                      onKeyEvent: _onComposerKey,
-                      child: TextField(
-                        controller: _input,
-                        focusNode: _inputFocus,
-                        minLines: 1,
-                        maxLines: 5,
-                        textInputAction: TextInputAction.newline,
-                        decoration: InputDecoration(
-                          hintText: _recording ? '录音中…' : '',
-                          isDense: true,
-                          filled: false,
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+            // 青屿：暖白输入卡，桌面端限宽居中。
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 750),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.panel,
+                    borderRadius: BorderRadius.circular(19),
+                    border: Border.all(color: AppTheme.line),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF25322E).withValues(alpha: 0.05),
+                        blurRadius: 22,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      if (_pending.isNotEmpty) _pendingStrip(),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 120),
+                        child: Focus(
+                          onKeyEvent: _onComposerKey,
+                          child: TextField(
+                            controller: _input,
+                            focusNode: _inputFocus,
+                            minLines: 1,
+                            maxLines: 5,
+                            textInputAction: TextInputAction.newline,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              height: 1.45,
+                              color: AppTheme.text,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: _recording ? '录音中…' : '',
+                              isDense: true,
+                              filled: false,
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 34,
-                    child: Row(
-                      children: [
-                        PopupMenuButton<String>(
-                          tooltip: '图片 / 文件',
-                          padding: EdgeInsets.zero,
-                          splashRadius: 18,
-                          icon: const Icon(Icons.add_rounded, size: 19, color: AppTheme.muted),
-                          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-                          onSelected: (value) {
-                            if (value == 'image') _pickFiles(imagesOnly: true);
-                            if (value == 'file') _pickFiles();
-                          },
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(
-                              value: 'image',
-                              height: 40,
-                              child: SizedBox(
-                                width: 140,
-                                child: Row(children: [
-                                  Icon(Icons.image_rounded, size: 17, color: AppTheme.muted),
-                                  SizedBox(width: 10),
-                                  Text('图片'),
-                                ]),
+                      SizedBox(
+                        height: 34,
+                        child: Row(
+                          children: [
+                            PopupMenuButton<String>(
+                              tooltip: '图片 / 文件',
+                              padding: EdgeInsets.zero,
+                              splashRadius: 18,
+                              icon: const Icon(
+                                Icons.add_rounded,
+                                size: 20,
+                                color: AppTheme.muted,
                               ),
-                            ),
-                            PopupMenuItem(
-                              value: 'file',
-                              height: 40,
-                              child: SizedBox(
-                                width: 140,
-                                child: Row(children: [
-                                  Icon(Icons.insert_drive_file_rounded, size: 17, color: AppTheme.muted),
-                                  SizedBox(width: 10),
-                                  Text('文件'),
-                                ]),
+                              constraints: const BoxConstraints.tightFor(
+                                width: 32,
+                                height: 32,
                               ),
+                              onSelected: (value) {
+                                if (value == 'image') {
+                                  _pickFiles(imagesOnly: true);
+                                }
+                                if (value == 'file') {
+                                  _pickFiles();
+                                }
+                              },
+                              itemBuilder: (context) => const [
+                                PopupMenuItem(
+                                  value: 'image',
+                                  height: 40,
+                                  child: SizedBox(
+                                    width: 140,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.image_rounded,
+                                          size: 17,
+                                          color: AppTheme.muted,
+                                        ),
+                                        SizedBox(width: 10),
+                                        Text('图片'),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'file',
+                                  height: 40,
+                                  child: SizedBox(
+                                    width: 140,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.insert_drive_file_rounded,
+                                          size: 17,
+                                          color: AppTheme.muted,
+                                        ),
+                                        SizedBox(width: 10),
+                                        Text('文件'),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
+                            _micButton(),
+                            _emojiButton(),
+                            const Spacer(),
+                            _sendButton(),
                           ],
                         ),
-                        _micButton(),
-                        const Spacer(),
-                        _sendButton(),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ],
@@ -1008,12 +1181,131 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           height: 32,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: _recording ? AppTheme.error.withValues(alpha: 0.18) : Colors.transparent,
+            color: _recording
+                ? AppTheme.error.withValues(alpha: 0.18)
+                : Colors.transparent,
           ),
           child: Icon(
             _recording ? Icons.mic : Icons.mic_none_rounded,
             size: 18,
             color: _recording ? AppTheme.error : AppTheme.muted,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static const _emojis = [
+    '🙂',
+    '😄',
+    '😊',
+    '🥰',
+    '😌',
+    '😴',
+    '🤔',
+    '😅',
+    '😂',
+    '🤗',
+    '😎',
+    '🫶',
+    '❤️',
+    '✨',
+    '🌙',
+    '☀️',
+    '🌿',
+    '🍵',
+    '🎵',
+    '📷',
+    '🎁',
+    '🐱',
+    '🐶',
+    '🌸',
+    '🍰',
+    '🚀',
+    '💪',
+    '👏',
+    '👍',
+    '🙌',
+    '🫂',
+    '🌊',
+  ];
+
+  /// 在光标位置插入表情，不打断正在输入的文字。
+  void _insertEmoji(String emoji) {
+    final value = _input.value;
+    final selection = value.selection;
+    final start = selection.isValid ? selection.start : value.text.length;
+    final end = selection.isValid ? selection.end : value.text.length;
+    final next = value.text.replaceRange(start, end, emoji);
+    _input.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: start + emoji.length),
+    );
+    _inputFocus.requestFocus();
+  }
+
+  Future<void> _showEmojiPicker() async {
+    final emoji = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppTheme.panel,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '表情',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.text,
+                ),
+              ),
+              const SizedBox(height: 12),
+              GridView.count(
+                crossAxisCount: 8,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 4,
+                crossAxisSpacing: 4,
+                children: [
+                  for (final e in _emojis)
+                    InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () => Navigator.of(sheetContext).pop(e),
+                      child: Center(
+                        child: Text(e, style: const TextStyle(fontSize: 24)),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (emoji != null) _insertEmoji(emoji);
+  }
+
+  Widget _emojiButton() {
+    return Tooltip(
+      message: '表情',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(9),
+        onTap: _showEmojiPicker,
+        child: const SizedBox(
+          width: 32,
+          height: 32,
+          child: Icon(
+            Icons.emoji_emotions_outlined,
+            size: 19,
+            color: AppTheme.muted,
           ),
         ),
       ),
@@ -1029,7 +1321,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         borderRadius: BorderRadius.circular(9),
         onTap: enabled ? _send : null,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: _isDesktop ? 12 : 10, vertical: 6),
+          padding: EdgeInsets.symmetric(
+            horizontal: _isDesktop ? 12 : 10,
+            vertical: 6,
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

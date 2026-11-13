@@ -19,8 +19,9 @@ class ProfileDialog extends StatefulWidget {
 }
 
 class _ProfileDialogState extends State<ProfileDialog> {
-  late final TextEditingController _name =
-      TextEditingController(text: AppProfile.instance.displayName);
+  late final TextEditingController _name = TextEditingController(
+    text: AppProfile.instance.displayName,
+  );
   bool _saving = false;
 
   @override
@@ -65,14 +66,14 @@ class _ProfileDialogState extends State<ProfileDialog> {
       await widget.api.saveProfile(nickname: nickname, avatarUrl: avatarUrl);
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已保存，其它设备连上后会自动同步')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已保存，其它设备连上后会自动同步')));
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已存到本机，云端同步失败：$error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已存到本机，云端同步失败：$error')));
       Navigator.of(context).pop();
     }
   }
@@ -81,6 +82,11 @@ class _ProfileDialogState extends State<ProfileDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: AppTheme.panel,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: AppTheme.line),
+      ),
       title: const Text('我的资料'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -89,7 +95,11 @@ class _ProfileDialogState extends State<ProfileDialog> {
           Center(
             child: GestureDetector(
               onTap: _pick,
-              child: AvatarBadge(name: _name.text, size: 88, image: AppProfile.instance.avatarImage),
+              child: AvatarBadge(
+                name: _name.text,
+                size: 88,
+                image: AppProfile.instance.avatarImage,
+              ),
             ),
           ),
           const SizedBox(height: 6),
@@ -100,7 +110,10 @@ class _ProfileDialogState extends State<ProfileDialog> {
             ),
           ),
           const SizedBox(height: 14),
-          const Text('我的昵称', style: TextStyle(fontSize: 12, color: AppTheme.muted)),
+          const Text(
+            '我的昵称',
+            style: TextStyle(fontSize: 12, color: AppTheme.muted),
+          ),
           const SizedBox(height: 6),
           TextField(
             controller: _name,
@@ -119,7 +132,10 @@ class _ProfileDialogState extends State<ProfileDialog> {
       ),
       actions: [
         TextButton(onPressed: _reset, child: const Text('恢复默认头像')),
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
         FilledButton(onPressed: _save, child: const Text('保存资料')),
       ],
     );

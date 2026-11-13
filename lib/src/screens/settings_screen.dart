@@ -51,7 +51,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
             child: const Text('保存'),
@@ -84,50 +87,117 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
-      body: StarryBackground(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          children: [
-            ListTile(
-              leading: const Icon(Icons.dns_rounded, color: AppTheme.muted),
-              title: const Text('服务器'),
-              subtitle: Text(widget.server, maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-            ListTile(
-              leading: const Icon(Icons.person_rounded, color: AppTheme.muted),
-              title: const Text('我的资料'),
-              subtitle: const Text('会同步到你的 DSH，所有设备保持一致'),
-              onTap: () => showDialog<void>(
-                context: context,
-                builder: (_) => ProfileDialog(api: widget.api),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.info_outline_rounded, color: AppTheme.muted),
-              title: const Text('版本'),
-              subtitle: Text(UpdateService.displayVersion),
-              trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const VersionScreen()),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.link_rounded, color: AppTheme.muted),
-              title: const Text('更新源'),
-              subtitle: Text(_source, maxLines: 2, overflow: TextOverflow.ellipsis),
-              onTap: _editSource,
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.swap_horiz_rounded, color: AppTheme.muted),
-              title: const Text('换一台 DSH'),
-              subtitle: const Text('清掉当前地址和令牌，回到连接页'),
-              onTap: _switchServer,
-            ),
-          ],
+      appBar: AppBar(
+        backgroundColor: AppTheme.panel,
+        surfaceTintColor: Colors.transparent,
+        title: const Text('设置'),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: AppTheme.line),
         ),
       ),
+      body: StarryBackground(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: [
+                _settingsCard([
+                  ListTile(
+                    leading: const Icon(
+                      Icons.dns_rounded,
+                      color: AppTheme.accent,
+                    ),
+                    title: const Text('服务器'),
+                    subtitle: Text(
+                      widget.server,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.person_rounded,
+                      color: AppTheme.accent,
+                    ),
+                    title: const Text('我的资料'),
+                    subtitle: const Text('会同步到你的 DSH，所有设备保持一致'),
+                    trailing: const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppTheme.muted,
+                    ),
+                    onTap: () => showDialog<void>(
+                      context: context,
+                      builder: (_) => ProfileDialog(api: widget.api),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.info_outline_rounded,
+                      color: AppTheme.accent,
+                    ),
+                    title: const Text('版本'),
+                    subtitle: Text(UpdateService.displayVersion),
+                    trailing: const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppTheme.muted,
+                    ),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const VersionScreen()),
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 12),
+                _settingsCard([
+                  ListTile(
+                    leading: const Icon(
+                      Icons.link_rounded,
+                      color: AppTheme.accent,
+                    ),
+                    title: const Text('更新源'),
+                    subtitle: Text(
+                      _source,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppTheme.muted,
+                    ),
+                    onTap: _editSource,
+                  ),
+                ]),
+                const SizedBox(height: 12),
+                _settingsCard([
+                  ListTile(
+                    leading: const Icon(
+                      Icons.swap_horiz_rounded,
+                      color: AppTheme.error,
+                    ),
+                    title: const Text('换一台 DSH'),
+                    subtitle: const Text('清掉当前地址和令牌，回到连接页'),
+                    onTap: _switchServer,
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _settingsCard(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.panel,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.line),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: children),
     );
   }
 }

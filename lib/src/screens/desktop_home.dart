@@ -51,7 +51,10 @@ class _DesktopHomeState extends State<DesktopHome> {
       _refreshTimer?.cancel();
       _refreshTimer = Timer(const Duration(milliseconds: 600), _load);
     });
-    _latencyTimer = Timer.periodic(const Duration(seconds: 30), (_) => _measureLatency());
+    _latencyTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _measureLatency(),
+    );
     _load();
   }
 
@@ -82,7 +85,8 @@ class _DesktopHomeState extends State<DesktopHome> {
         _items = items;
         _loading = false;
         _error = null;
-        if (_selectedId == null || !items.any((item) => item.id == _selectedId)) {
+        if (_selectedId == null ||
+            !items.any((item) => item.id == _selectedId)) {
           _selectedId = items.isNotEmpty ? items.first.id : null;
         }
       });
@@ -114,7 +118,10 @@ class _DesktopHomeState extends State<DesktopHome> {
         title: const Text('删除对话'),
         content: Text('「${conversation.title}」会一起从 DSH 里删掉。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('删除', style: TextStyle(color: AppTheme.error)),
@@ -132,29 +139,40 @@ class _DesktopHomeState extends State<DesktopHome> {
   }
 
   void _openProfile() {
-    showDialog<void>(context: context, builder: (_) => ProfileDialog(api: widget.api));
+    showDialog<void>(
+      context: context,
+      builder: (_) => ProfileDialog(api: widget.api),
+    );
   }
 
   void _openSettings() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => SettingsScreen(server: widget.server, token: widget.token, api: widget.api),
+        builder: (_) => SettingsScreen(
+          server: widget.server,
+          token: widget.token,
+          api: widget.api,
+        ),
       ),
     );
   }
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   List<Conversation> get _filtered {
     final query = _query.trim().toLowerCase();
     if (query.isEmpty) return _items;
     return _items
-        .where((item) =>
-            item.title.toLowerCase().contains(query) ||
-            item.preview.toLowerCase().contains(query))
+        .where(
+          (item) =>
+              item.title.toLowerCase().contains(query) ||
+              item.preview.toLowerCase().contains(query),
+        )
         .toList();
   }
 
@@ -173,24 +191,26 @@ class _DesktopHomeState extends State<DesktopHome> {
         backgroundColor: Colors.transparent,
         body: Row(
           children: [
-            _rail(),
-            SizedBox(width: 300, child: _listPane()),
+            SizedBox(width: 282, child: _listPane()),
             Expanded(
               child: selected == null
                   ? _emptyPane()
-                  : Column(
-                      children: [
-                        _chatHeader(selected),
-                        Expanded(
-                          child: ChatScreen(
-                            key: ValueKey(selected.id),
-                            api: widget.api,
-                            conversationId: selected.id,
-                            title: selected.title,
-                            embedded: true,
+                  : Container(
+                      color: AppTheme.panel,
+                      child: Column(
+                        children: [
+                          _chatHeader(selected),
+                          Expanded(
+                            child: ChatScreen(
+                              key: ValueKey(selected.id),
+                              api: widget.api,
+                              conversationId: selected.id,
+                              title: selected.title,
+                              embedded: true,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
             ),
           ],
@@ -199,79 +219,100 @@ class _DesktopHomeState extends State<DesktopHome> {
     );
   }
 
-  Widget _rail() {
-    return SizedBox(
-      width: 62,
-      child: Column(
-        children: [
-          const SizedBox(height: 18),
-          AnimatedBuilder(
-            animation: AppProfile.instance,
-            builder: (context, _) {
-              final profile = AppProfile.instance;
-              return AvatarBadge(
-                name: profile.displayName,
-                size: 36,
-                image: profile.avatarImage,
-                onTap: _openProfile,
-              );
-            },
-          ),
-          const SizedBox(height: 22),
-          _railButton(Icons.chat_bubble_rounded, '消息', selected: true),
-          const Spacer(),
-          _railButton(Icons.settings_rounded, '设置', onTap: _openSettings),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _railButton(IconData icon, String tooltip, {bool selected = false, VoidCallback? onTap}) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 44,
-          height: 44,
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          decoration: BoxDecoration(
-            color: selected ? AppTheme.accent.withValues(alpha: 0.16) : null,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            icon,
-            size: 21,
-            color: selected ? AppTheme.accent : AppTheme.muted,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _listPane() {
-    return SizedBox(
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppTheme.panelAlt,
+        border: Border(right: BorderSide(color: AppTheme.line)),
+      ),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 12, 10),
+            padding: const EdgeInsets.fromLTRB(16, 16, 12, 10),
             child: Row(
               children: [
+                AnimatedBuilder(
+                  animation: AppProfile.instance,
+                  builder: (context, _) => AvatarBadge(
+                    name: AppProfile.instance.displayName,
+                    size: 34,
+                    image: AppProfile.instance.avatarImage,
+                    onTap: _openProfile,
+                  ),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: AnimatedBuilder(
-                    animation: AppProfile.instance,
-                    builder: (context, _) => Text(
-                      AppProfile.instance.displayName,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '消息',
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.text,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _connected ? '在呢，随时聊' : '连接中…',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.muted,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
-                  tooltip: '新对话',
-                  onPressed: _create,
-                  icon: const Icon(Icons.add_rounded, size: 22, color: AppTheme.muted),
+                  tooltip: '设置',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 30,
+                    height: 30,
+                  ),
+                  onPressed: _openSettings,
+                  icon: const Icon(
+                    Icons.settings_outlined,
+                    size: 18,
+                    color: AppTheme.muted,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Material(
+                  color: AppTheme.accent,
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: _create,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add_rounded,
+                            size: 15,
+                            color: Colors.white,
+                          ),
+                          SizedBox(width: 3),
+                          Text(
+                            '新对话',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -283,7 +324,11 @@ class _DesktopHomeState extends State<DesktopHome> {
               onChanged: (value) => setState(() => _query = value),
               decoration: InputDecoration(
                 hintText: '搜索会话',
-                prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppTheme.muted),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  size: 18,
+                  color: AppTheme.muted,
+                ),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 border: OutlineInputBorder(
@@ -307,7 +352,11 @@ class _DesktopHomeState extends State<DesktopHome> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                Icon(Icons.circle, size: 7, color: _connected ? const Color(0xFF3DD68C) : AppTheme.muted),
+                Icon(
+                  Icons.circle,
+                  size: 7,
+                  color: _connected ? const Color(0xFF3DD68C) : AppTheme.muted,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   _connected
@@ -316,7 +365,10 @@ class _DesktopHomeState extends State<DesktopHome> {
                   style: const TextStyle(fontSize: 11, color: AppTheme.muted),
                 ),
                 const Spacer(),
-                const Text('Dshchat', style: TextStyle(fontSize: 11, color: AppTheme.muted)),
+                const Text(
+                  'Dshchat',
+                  style: TextStyle(fontSize: 11, color: AppTheme.muted),
+                ),
               ],
             ),
           ),
@@ -334,7 +386,11 @@ class _DesktopHomeState extends State<DesktopHome> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.error, fontSize: 12)),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppTheme.error, fontSize: 12),
+              ),
               const SizedBox(height: 10),
               FilledButton(onPressed: _load, child: const Text('重试')),
             ],
@@ -345,8 +401,10 @@ class _DesktopHomeState extends State<DesktopHome> {
     final items = _filtered;
     if (items.isEmpty) {
       return const Center(
-        child: Text('还没有对话，点右上角 + 开一个',
-            style: TextStyle(color: AppTheme.muted, fontSize: 12)),
+        child: Text(
+          '还没有对话，点上方「新对话」开一个',
+          style: TextStyle(color: AppTheme.muted, fontSize: 12),
+        ),
       );
     }
     return ListView.builder(
@@ -383,12 +441,18 @@ class _DesktopHomeState extends State<DesktopHome> {
                           conversation.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       Text(
                         _timeText(conversation.updatedAt),
-                        style: const TextStyle(fontSize: 10.5, color: AppTheme.muted),
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          color: AppTheme.muted,
+                        ),
                       ),
                     ],
                   ),
@@ -402,14 +466,20 @@ class _DesktopHomeState extends State<DesktopHome> {
                               : conversation.preview,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11.5, color: AppTheme.muted),
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: AppTheme.muted,
+                          ),
                         ),
                       ),
                       PopupMenuButton<String>(
                         tooltip: '更多',
                         padding: EdgeInsets.zero,
                         iconSize: 16,
-                        icon: const Icon(Icons.more_horiz_rounded, color: AppTheme.muted),
+                        icon: const Icon(
+                          Icons.more_horiz_rounded,
+                          color: AppTheme.muted,
+                        ),
                         onSelected: (value) {
                           if (value == 'delete') _delete(conversation);
                         },
@@ -430,7 +500,9 @@ class _DesktopHomeState extends State<DesktopHome> {
 
   String _timeText(DateTime time) {
     final now = DateTime.now();
-    if (time.year == now.year && time.month == now.month && time.day == now.day) {
+    if (time.year == now.year &&
+        time.month == now.month &&
+        time.day == now.day) {
       return DateFormat('HH:mm').format(time);
     }
     if (time.year == now.year) return DateFormat('MM/dd').format(time);
@@ -439,20 +511,73 @@ class _DesktopHomeState extends State<DesktopHome> {
 
   Widget _chatHeader(Conversation conversation) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(18, 10, 12, 10),
+      decoration: const BoxDecoration(
+        color: AppTheme.panel,
+        border: Border(bottom: BorderSide(color: AppTheme.line)),
+      ),
       child: Row(
         children: [
-          AvatarBadge(name: conversation.title, size: 38),
-          const SizedBox(width: 12),
+          AvatarBadge(name: conversation.title, size: 36),
+          const SizedBox(width: 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  conversation.title,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        conversation.title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.text,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accent.withValues(alpha: 0.09),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: const Text(
+                        'AI',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.accent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.circle,
+                      size: 6,
+                      color: _connected
+                          ? const Color(0xFF3DAE7E)
+                          : AppTheme.muted,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      _connected ? '在呢，随时聊' : '连接中…',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.muted,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -460,7 +585,11 @@ class _DesktopHomeState extends State<DesktopHome> {
           IconButton(
             tooltip: '刷新',
             onPressed: _load,
-            icon: const Icon(Icons.refresh_rounded, size: 19, color: AppTheme.muted),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              size: 19,
+              color: AppTheme.muted,
+            ),
           ),
         ],
       ),
@@ -474,8 +603,10 @@ class _DesktopHomeState extends State<DesktopHome> {
         children: [
           Icon(Icons.forum_outlined, size: 42, color: AppTheme.muted),
           SizedBox(height: 12),
-          Text('选一个对话，或者点右上角 + 开一个',
-              style: TextStyle(color: AppTheme.muted, fontSize: 13)),
+          Text(
+            '选一个对话，或者点左上角「新对话」',
+            style: TextStyle(color: AppTheme.muted, fontSize: 13),
+          ),
         ],
       ),
     );

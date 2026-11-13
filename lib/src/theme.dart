@@ -1,20 +1,42 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
-/// 深空底色 + 星点，参考星伴的观感：暗、静、留白多。
+/// 青屿 · 陪伴版：暖白底、鼠尾草绿主色、轻盈留白。
+/// 70% 日常闲聊 / 30% 远程协作，界面尽量安静，不抢对话内容。
 class AppTheme {
-  static const bg = Color(0xFF080A10);
-  static const panel = Color(0xFF12151F);
-  static const panelAlt = Color(0xFF1A1E2B);
-  static const line = Color(0xFF262C3D);
-  static const text = Color(0xFFEDEEF5);
-  static const muted = Color(0xFF8B93A7);
-  static const accent = Color(0xFF7C8CFF);
-  static const accent2 = Color(0xFF4F8CFF);
-  static const gold = Color(0xFFF0C987);
-  static const me = Color(0xFF2B4BC7);
-  static const error = Color(0xFFFF6B6B);
+  /// 页面底色（暖白）
+  static const bg = Color(0xFFF3F1EC);
+
+  /// 卡片 / 消息面板
+  static const panel = Color(0xFFFDFDFC);
+
+  /// 侧栏、次级面板
+  static const panelAlt = Color(0xFFF5F5F1);
+
+  /// 细边框
+  static const line = Color(0xFFE1E4DC);
+
+  /// 正文
+  static const text = Color(0xFF25322E);
+
+  /// 次要文字
+  static const muted = Color(0xFF828B85);
+
+  /// 主色：鼠尾草绿
+  static const accent = Color(0xFF276A5B);
+  static const accent2 = Color(0xFF77A998);
+
+  /// 强调色（更新提示等）
+  static const gold = Color(0xFFB8873F);
+
+  /// 自己的消息气泡
+  static const me = Color(0xFFE5EEE8);
+  static const meBorder = Color(0xFFD9E4DC);
+
+  /// 对方消息气泡
+  static const bubble = Color(0xFFFFFFFF);
+  static const bubbleBorder = Color(0xFFE1E4DC);
+
+  static const error = Color(0xFFD65F5B);
 
   static const accentGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -22,12 +44,13 @@ class AppTheme {
     colors: [accent, accent2],
   );
 
-  static ThemeData dark() {
-    final base = ThemeData.dark(useMaterial3: true);
+  static ThemeData light() {
+    final base = ThemeData.light(useMaterial3: true);
     return base.copyWith(
       scaffoldBackgroundColor: bg,
       colorScheme: base.colorScheme.copyWith(
         primary: accent,
+        onPrimary: Colors.white,
         surface: panel,
         error: error,
       ),
@@ -36,52 +59,70 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
+        iconTheme: IconThemeData(color: text),
         titleTextStyle: TextStyle(
           color: text,
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          letterSpacing: 0.3,
+          letterSpacing: 0.2,
         ),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: panelAlt,
+        backgroundColor: panel,
         contentTextStyle: const TextStyle(color: text),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: line),
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: panel.withValues(alpha: 0.9),
+        fillColor: panel,
         hintStyle: const TextStyle(color: muted),
         labelStyle: const TextStyle(color: muted),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: line),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: line),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: accent),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: accent, width: 1.4),
         ),
       ),
-      dividerColor: line.withValues(alpha: 0.6),
+      textSelectionTheme: const TextSelectionThemeData(
+        cursorColor: accent,
+        selectionColor: Color(0x33276A5B),
+        selectionHandleColor: accent,
+      ),
+      dividerColor: line,
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: accent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           padding: const EdgeInsets.symmetric(vertical: 14),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
         ),
       ),
     );
   }
+
+  /// 兼容旧调用：旧的暗色入口现在直接返回青屿浅色主题。
+  static ThemeData dark() => light();
 }
 
-/// 背景：一层暗色渐变 + 稀疏星点（固定种子，不会每次重绘乱闪）。
+/// 青屿背景：暖白到浅米色的柔和渐变，保留极淡的绿色光晕。
 class StarryBackground extends StatelessWidget {
   const StarryBackground({super.key, this.child});
 
@@ -89,50 +130,18 @@ class StarryBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: const Alignment(0.2, -0.9),
-                radius: 1.1,
-                colors: [
-                  AppTheme.accent.withValues(alpha: 0.12),
-                  AppTheme.bg,
-                  const Color(0xFF05060A),
-                ],
-                stops: const [0, 0.55, 1],
-              ),
-            ),
-          ),
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0.7, -1.0),
+          radius: 1.15,
+          colors: [Color(0xFFFBFCF8), AppTheme.bg],
+          stops: [0, 0.72],
         ),
-        Positioned.fill(child: CustomPaint(painter: _StarPainter())),
-        if (child != null) Positioned.fill(child: child!),
-      ],
+      ),
+      child: child ?? const SizedBox.expand(),
     );
   }
-}
-
-class _StarPainter extends CustomPainter {
-  static final List<Offset> _dots = () {
-    final random = math.Random(20261111);
-    return List.generate(90, (_) => Offset(random.nextDouble(), random.nextDouble()));
-  }();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint();
-    for (var i = 0; i < _dots.length; i++) {
-      final dot = _dots[i];
-      final radius = i % 7 == 0 ? 1.4 : 0.9;
-      paint.color = Colors.white.withValues(alpha: i % 7 == 0 ? 0.55 : 0.22);
-      canvas.drawCircle(Offset(dot.dx * size.width, dot.dy * size.height), radius, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// 统一的小圆按钮。
@@ -155,15 +164,18 @@ class RoundButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final button = Material(
-      color: color ?? AppTheme.panelAlt,
-      shape: const CircleBorder(),
+      color: color ?? AppTheme.panel,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(size * 0.32),
+        side: const BorderSide(color: AppTheme.line),
+      ),
       child: InkWell(
-        customBorder: const CircleBorder(),
+        borderRadius: BorderRadius.circular(size * 0.32),
         onTap: onPressed,
         child: SizedBox(
           width: size,
           height: size,
-          child: Icon(icon, size: size * 0.5, color: AppTheme.text),
+          child: Icon(icon, size: size * 0.46, color: AppTheme.text),
         ),
       ),
     );
@@ -201,9 +213,9 @@ class AvatarBadge extends StatelessWidget {
         gradient: AppTheme.accentGradient,
         boxShadow: [
           BoxShadow(
-            color: AppTheme.accent.withValues(alpha: 0.35),
-            blurRadius: 14,
-            spreadRadius: 1,
+            color: AppTheme.accent.withValues(alpha: 0.18),
+            blurRadius: 10,
+            spreadRadius: 0,
           ),
         ],
       ),

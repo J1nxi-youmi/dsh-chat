@@ -35,7 +35,7 @@ Future<void> main() async {
   }
   // Windows 的系统通知、Android 的前台服务都在这里初始化。
   await Notifier.setup();
-    // 先把「我的资料」读出来（昵称 + 自定义头像）。
+  // 先把「我的资料」读出来（昵称 + 自定义头像）。
   await AppProfile.instance.load();
   runApp(const ChatApp());
 }
@@ -48,7 +48,7 @@ class ChatApp extends StatelessWidget {
     return MaterialApp(
       title: '聊天',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       home: const _Boot(),
     );
   }
@@ -78,7 +78,9 @@ class _BootState extends State<_Boot> {
       future: _prefs,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
         final prefs = snapshot.data!;
         final server = prefs.getString('server') ?? '';

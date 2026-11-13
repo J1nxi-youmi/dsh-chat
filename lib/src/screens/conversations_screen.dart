@@ -106,7 +106,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         title: const Text('删除对话'),
         content: Text('「${conversation.title}」会一起从 DSH 里删掉。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('删除', style: TextStyle(color: AppTheme.error)),
@@ -125,13 +128,18 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: AppTheme.panel,
+        surfaceTintColor: Colors.transparent,
+        titleSpacing: 4,
         title: Row(
           children: [
             AnimatedBuilder(
@@ -150,14 +158,24 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: AnimatedBuilder(
-                animation: AppProfile.instance,
-                builder: (context, _) => Text(
-                  AppProfile.instance.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '消息',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.text,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _connected ? '在呢，随时聊' : '连接中…',
+                    style: const TextStyle(fontSize: 10, color: AppTheme.muted),
+                  ),
+                ],
               ),
             ),
           ],
@@ -167,12 +185,25 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             tooltip: '设置',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => SettingsScreen(server: widget.server, token: widget.token, api: widget.api),
+                builder: (_) => SettingsScreen(
+                  server: widget.server,
+                  token: widget.token,
+                  api: widget.api,
+                ),
               ),
             ),
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(
+              Icons.settings_outlined,
+              size: 21,
+              color: AppTheme.muted,
+            ),
           ),
+          const SizedBox(width: 4),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: AppTheme.line),
+        ),
       ),
       body: StarryBackground(
         child: Column(
@@ -186,7 +217,11 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                 decoration: InputDecoration(
                   hintText: '搜索会话',
                   isDense: true,
-                  prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppTheme.muted),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    size: 18,
+                    color: AppTheme.muted,
+                  ),
                   filled: true,
                   fillColor: AppTheme.panelAlt,
                   border: OutlineInputBorder(
@@ -198,16 +233,19 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               ),
             ),
             Expanded(
-              child: RefreshIndicator(
-                onRefresh: _load,
-                child: _body(),
-              ),
+              child: RefreshIndicator(onRefresh: _load, child: _body()),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
               child: Row(
                 children: [
-                  Icon(Icons.circle, size: 7, color: _connected ? const Color(0xFF3DD68C) : AppTheme.muted),
+                  Icon(
+                    Icons.circle,
+                    size: 7,
+                    color: _connected
+                        ? const Color(0xFF3DD68C)
+                        : AppTheme.muted,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     _connected
@@ -224,6 +262,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _create,
         backgroundColor: AppTheme.accent,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Icon(Icons.add_comment_rounded),
       ),
     );
@@ -233,9 +274,11 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     final query = _query.trim().toLowerCase();
     if (query.isEmpty) return _items;
     return _items
-        .where((item) =>
-            item.title.toLowerCase().contains(query) ||
-            item.preview.toLowerCase().contains(query))
+        .where(
+          (item) =>
+              item.title.toLowerCase().contains(query) ||
+              item.preview.toLowerCase().contains(query),
+        )
         .toList();
   }
 
@@ -249,7 +292,11 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           const SizedBox(height: 80),
           const Icon(Icons.cloud_off_rounded, size: 42, color: AppTheme.muted),
           const SizedBox(height: 12),
-          Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.muted)),
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppTheme.muted),
+          ),
           const SizedBox(height: 16),
           Center(
             child: FilledButton(onPressed: _load, child: const Text('重试')),
@@ -263,8 +310,11 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           SizedBox(height: 100),
           Icon(Icons.forum_outlined, size: 42, color: AppTheme.muted),
           SizedBox(height: 12),
-          Text('还没有对话，点右下角开一个',
-              textAlign: TextAlign.center, style: TextStyle(color: AppTheme.muted)),
+          Text(
+            '还没有对话，点右下角开一个',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.muted),
+          ),
         ],
       );
     }
@@ -306,12 +356,18 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                               conversation.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                           Text(
                             _timeText(conversation.updatedAt),
-                            style: const TextStyle(fontSize: 10.5, color: AppTheme.muted),
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              color: AppTheme.muted,
+                            ),
                           ),
                         ],
                       ),
@@ -320,7 +376,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                         conversation.preview,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, color: AppTheme.muted),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.muted,
+                        ),
                       ),
                     ],
                   ),
@@ -328,7 +387,11 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                 IconButton(
                   tooltip: '删除对话',
                   onPressed: () => _delete(conversation),
-                  icon: const Icon(Icons.more_horiz_rounded, size: 16, color: AppTheme.muted),
+                  icon: const Icon(
+                    Icons.more_horiz_rounded,
+                    size: 16,
+                    color: AppTheme.muted,
+                  ),
                 ),
               ],
             ),
@@ -340,7 +403,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
 
   String _timeText(DateTime time) {
     final now = DateTime.now();
-    if (time.year == now.year && time.month == now.month && time.day == now.day) {
+    if (time.year == now.year &&
+        time.month == now.month &&
+        time.day == now.day) {
       return DateFormat('HH:mm').format(time);
     }
     return DateFormat('MM/dd').format(time);

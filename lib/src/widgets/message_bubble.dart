@@ -33,6 +33,23 @@ class MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final mine = message.isMine;
     final avatar = _Avatar(mine: mine);
+    // 文件、图片、语音使用对称圆角卡片；纯文字才有朝向头像的小角。
+    final hasCard = message.attachments.isNotEmpty;
+    final radius = hasCard
+        ? BorderRadius.circular(14)
+        : mine
+        ? const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(5),
+            bottomLeft: Radius.circular(16),
+            bottomRight: Radius.circular(16),
+          )
+        : const BorderRadius.only(
+            topLeft: Radius.circular(5),
+            topRight: Radius.circular(16),
+            bottomLeft: Radius.circular(16),
+            bottomRight: Radius.circular(16),
+          );
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Row(
@@ -42,52 +59,66 @@ class MessageBubble extends StatelessWidget {
           if (!mine) avatar,
           Flexible(
             child: Container(
-        margin: EdgeInsets.only(bottom: 10, left: mine ? 0 : 6, right: mine ? 6 : 0),
-        padding: const EdgeInsets.fromLTRB(12, 9, 12, 7),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-        decoration: BoxDecoration(
-          color: mine ? null : AppTheme.panelAlt.withValues(alpha: 0.92),
-          gradient: mine ? AppTheme.accentGradient : null,
-          border: mine ? null : Border.all(color: AppTheme.line),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final attachment in message.attachments) ...[
-              AttachmentView(attachment: attachment, mediaUrl: mediaUrl),
-              const SizedBox(height: 6),
-            ],
-            if (message.text.isNotEmpty) _text(context),
-            const SizedBox(height: 2),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  DateFormat('HH:mm').format(message.at),
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    color: AppTheme.text.withValues(alpha: 0.55),
-                  ),
+              margin: EdgeInsets.only(
+                bottom: 10,
+                left: mine ? 0 : 6,
+                right: mine ? 6 : 0,
+              ),
+              padding: const EdgeInsets.fromLTRB(12, 9, 12, 7),
+              constraints: const BoxConstraints(maxWidth: 640),
+              decoration: BoxDecoration(
+                color: mine ? AppTheme.me : AppTheme.bubble,
+                border: Border.all(
+                  color: mine ? AppTheme.meBorder : AppTheme.bubbleBorder,
                 ),
-                if (status != null) ...[
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: status == 'failed' ? onRetry : null,
-                    child: Text(
-                      status == 'failed' ? '发送失败，点这里重发' : '发送中…',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        color: status == 'failed' ? AppTheme.error : AppTheme.text.withValues(alpha: 0.55),
-                      ),
-                    ),
+                borderRadius: radius,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF25322E).withValues(alpha: 0.035),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
                 ],
-              ],
-            ),
-          ],
-        ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final attachment in message.attachments) ...[
+                    AttachmentView(attachment: attachment, mediaUrl: mediaUrl),
+                    const SizedBox(height: 6),
+                  ],
+                  if (message.text.isNotEmpty) _text(context),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        DateFormat('HH:mm').format(message.at),
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          color: AppTheme.muted,
+                        ),
+                      ),
+                      if (status != null) ...[
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: status == 'failed' ? onRetry : null,
+                          child: Text(
+                            status == 'failed' ? '发送失败，点这里重发' : '发送中…',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: status == 'failed'
+                                  ? AppTheme.error
+                                  : AppTheme.muted,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           if (mine) avatar,
@@ -104,30 +135,46 @@ class MessageBubble extends StatelessWidget {
         spans.add(TextSpan(text: message.text.substring(index, match.start)));
       }
       final link = match.group(0)!;
-      spans.add(TextSpan(
-        text: link,
-        style: const TextStyle(
-          color: Color(0xFF9ECBFF),
-          decoration: TextDecoration.underline,
+      spans.add(
+        TextSpan(
+          text: link,
+          style: const TextStyle(
+            color: AppTheme.accent,
+            decoration: TextDecoration.underline,
+            decorationColor: AppTheme.accent2,
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () => launchUrl(
+              Uri.parse(link),
+              mode: LaunchMode.externalApplication,
+            ),
         ),
-        recognizer: TapGestureRecognizer()
-          ..onTap = () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication),
-      ));
+      );
       index = match.end;
     }
     if (index < message.text.length) {
       spans.add(TextSpan(text: message.text.substring(index)));
     }
-    return Text.rich(TextSpan(
-      style: const TextStyle(color: AppTheme.text, fontSize: 15, height: 1.45),
-      children: spans,
-    ));
+    return Text.rich(
+      TextSpan(
+        style: const TextStyle(
+          color: AppTheme.text,
+          fontSize: 15,
+          height: 1.45,
+        ),
+        children: spans,
+      ),
+    );
   }
 }
 
 /// 附件：图片直接显示，语音带播放键，文件是卡片。
 class AttachmentView extends StatelessWidget {
-  const AttachmentView({super.key, required this.attachment, required this.mediaUrl});
+  const AttachmentView({
+    super.key,
+    required this.attachment,
+    required this.mediaUrl,
+  });
 
   final Attachment attachment;
   final String Function(String) mediaUrl;
@@ -150,33 +197,49 @@ class AttachmentView extends StatelessWidget {
           errorBuilder: (_, __, ___) => const SizedBox(
             height: 80,
             child: Center(
-              child: Text('图片加载失败', style: TextStyle(color: AppTheme.muted, fontSize: 12)),
+              child: Text(
+                '图片加载失败',
+                style: TextStyle(color: AppTheme.muted, fontSize: 12),
+              ),
             ),
           ),
         ),
       );
     }
     if (attachment.isVoice) {
-      return _VoiceTile(url: mediaUrl(attachment.url), seconds: attachment.duration);
+      return _VoiceTile(
+        url: mediaUrl(attachment.url),
+        seconds: attachment.duration,
+      );
     }
     return InkWell(
-      onTap: () => launchUrl(Uri.parse(mediaUrl(attachment.url)),
-          mode: LaunchMode.externalApplication),
+      onTap: () => launchUrl(
+        Uri.parse(mediaUrl(attachment.url)),
+        mode: LaunchMode.externalApplication,
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.insert_drive_file_outlined, size: 20),
+          const Icon(
+            Icons.insert_drive_file_outlined,
+            size: 20,
+            color: AppTheme.accent,
+          ),
           const SizedBox(width: 8),
           Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(attachment.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13.5)),
-                Text(attachment.sizeText,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.muted)),
+                Text(
+                  attachment.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13.5),
+                ),
+                Text(
+                  attachment.sizeText,
+                  style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+                ),
               ],
             ),
           ),
@@ -221,31 +284,87 @@ class _VoiceTileState extends State<_VoiceTile> {
       return;
     }
     try {
-      if (_player.duration == null || _player.processingState == ProcessingState.idle) {
+      if (_player.duration == null ||
+          _player.processingState == ProcessingState.idle) {
         await _player.setUrl(widget.url);
       }
       await _player.play();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('语音播放失败')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('语音播放失败')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final label = widget.seconds > 0 ? '${widget.seconds.toStringAsFixed(0)}″' : '';
+    final label = widget.seconds > 0
+        ? '${widget.seconds.toStringAsFixed(0)}″'
+        : '';
     return InkWell(
       onTap: _toggle,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
-              size: 30),
+          Icon(
+            _playing
+                ? Icons.pause_circle_filled_rounded
+                : Icons.play_circle_fill_rounded,
+            size: 30,
+            color: AppTheme.accent,
+          ),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontSize: 13)),
+          _Waveform(playing: _playing),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: AppTheme.muted),
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// 语音条上的静态波形，播放时颜色加深。
+class _Waveform extends StatelessWidget {
+  const _Waveform({required this.playing});
+
+  final bool playing;
+
+  static const _heights = [
+    5.0,
+    9.0,
+    14.0,
+    8.0,
+    17.0,
+    21.0,
+    11.0,
+    16.0,
+    7.0,
+    13.0,
+    20.0,
+    15.0,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final color = AppTheme.accent.withValues(alpha: playing ? 0.95 : 0.45);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final height in _heights)
+          Container(
+            width: 2,
+            height: height,
+            margin: const EdgeInsets.only(right: 2),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -262,8 +381,14 @@ class TypingRow extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: AppTheme.panelAlt,
-          borderRadius: BorderRadius.circular(16),
+          color: AppTheme.bubble,
+          border: Border.all(color: AppTheme.bubbleBorder),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(5),
+            topRight: Radius.circular(16),
+            bottomLeft: Radius.circular(16),
+            bottomRight: Radius.circular(16),
+          ),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -274,7 +399,10 @@ class TypingRow extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             SizedBox(width: 8),
-            Text('正在输入…', style: TextStyle(fontSize: 13, color: AppTheme.muted)),
+            Text(
+              '正在输入…',
+              style: TextStyle(fontSize: 13, color: AppTheme.muted),
+            ),
           ],
         ),
       ),

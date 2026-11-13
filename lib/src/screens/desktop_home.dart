@@ -174,7 +174,10 @@ class _DesktopHomeState extends State<DesktopHome> {
       if (!mounted) return;
       await showDialog<void>(
         context: context,
-        builder: (_) => MessageSearchDialog(messages: detail.messages),
+        builder: (_) => MessageSearchDialog(
+          messages: detail.messages,
+          assistantName: conversation.title,
+        ),
       );
     } catch (error) {
       _toast('搜索失败：$error');

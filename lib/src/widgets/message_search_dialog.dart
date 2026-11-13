@@ -6,9 +6,14 @@ import '../theme.dart';
 
 /// 当前会话内的本地消息搜索：只过滤已经加载到界面的消息。
 class MessageSearchDialog extends StatefulWidget {
-  const MessageSearchDialog({super.key, required this.messages});
+  const MessageSearchDialog({
+    super.key,
+    required this.messages,
+    required this.assistantName,
+  });
 
   final List<Message> messages;
+  final String assistantName;
 
   @override
   State<MessageSearchDialog> createState() => _MessageSearchDialogState();
@@ -136,7 +141,11 @@ class _MessageSearchDialogState extends State<MessageSearchDialog> {
                             color: AppTheme.accent,
                           ),
                           title: Text(
-                            message.isMine ? '我' : '星野',
+                            message.isMine
+                                ? '我'
+                                : widget.assistantName.trim().isEmpty
+                                ? '青屿'
+                                : widget.assistantName.trim(),
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,

@@ -759,7 +759,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             tooltip: '搜索聊天',
             onPressed: () => showDialog<void>(
               context: context,
-              builder: (_) => MessageSearchDialog(messages: _messages),
+              builder: (_) => MessageSearchDialog(
+                messages: _messages,
+                assistantName: widget.title,
+              ),
             ),
             icon: const Icon(
               Icons.search_rounded,

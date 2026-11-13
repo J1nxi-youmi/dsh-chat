@@ -199,8 +199,12 @@ class ChatScreenState extends State<ChatScreen> {
         }
       });
       final added = _messages.length - before;
-      if (added <= 0 || _atBottom) return;
-      setState(() => _unreadBelow += added);
+      if (added <= 0) return;
+      if (_atBottom) {
+        _jumpToBottom();
+      } else {
+        setState(() => _unreadBelow += added);
+      }
     } catch (_) {
       /* 下次重连再补 */
     }
@@ -233,9 +237,14 @@ class ChatScreenState extends State<ChatScreen> {
       return;
     }
     final before = _messages.length;
+    final wasAtBottom = _atBottom;
     setState(() => _merge(message));
-    if (_messages.length <= before || _atBottom) return;
-    setState(() => _unreadBelow += 1);
+    if (_messages.length <= before) return;
+    if (wasAtBottom) {
+      _jumpToBottom();
+    } else {
+      setState(() => _unreadBelow += 1);
+    }
   }
 
   void _jumpToBottom({int attempt = 0}) {
@@ -255,16 +264,9 @@ class ChatScreenState extends State<ChatScreen> {
         });
       }
       // 反向列表的 index 0 是底部 1px 锚点。
-      unawaited(
-        _itemScroll
-            .scrollTo(
-              index: 0,
-              alignment: 0,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-            )
-            .catchError((_) {}),
-      );
+      // 用 jumpTo 而不是 scrollTo：发送后列表会立刻重建，动画容易被取消，
+      // 停在旧消息的位置。
+      _itemScroll.jumpTo(index: 0, alignment: 0);
     });
   }
 

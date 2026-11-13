@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models.dart';
@@ -100,7 +104,11 @@ class MessageBubble extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   for (final attachment in message.attachments) ...[
-                    AttachmentView(attachment: attachment, mediaUrl: mediaUrl),
+                    AttachmentView(
+                      attachment: attachment,
+                      mediaUrl: mediaUrl,
+                      sentAt: message.at,
+                    ),
                     const SizedBox(height: 6),
                   ],
                   if (message.text.isNotEmpty) _text(context),
@@ -227,10 +235,12 @@ class AttachmentView extends StatelessWidget {
     super.key,
     required this.attachment,
     required this.mediaUrl,
+    this.sentAt,
   });
 
   final Attachment attachment;
   final String Function(String) mediaUrl;
+  final DateTime? sentAt;
 
   @override
   Widget build(BuildContext context) {
@@ -239,7 +249,8 @@ class AttachmentView extends StatelessWidget {
         onTap: () => showDialog<void>(
           context: context,
           barrierColor: Colors.black87,
-          builder: (_) => _ImageViewerDialog(url: mediaUrl(attachment.url)),
+          builder: (_) =>
+              _ImageViewerDialog(url: mediaUrl(attachment.url), time: sentAt),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
@@ -309,14 +320,63 @@ class AttachmentView extends StatelessWidget {
   }
 }
 
-/// 图片全屏预览：可双指缩放，右上角关闭。
-class _ImageViewerDialog extends StatelessWidget {
-  const _ImageViewerDialog({required this.url});
+/// 图片全屏预览：顶部返回/关闭，底部时间和保存。
+class _ImageViewerDialog extends StatefulWidget {
+  const _ImageViewerDialog({required this.url, this.time});
 
   final String url;
+  final DateTime? time;
+
+  @override
+  State<_ImageViewerDialog> createState() => _ImageViewerDialogState();
+}
+
+class _ImageViewerDialogState extends State<_ImageViewerDialog> {
+  bool _saving = false;
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final response = await http.get(Uri.parse(widget.url));
+      if (response.statusCode != 200) {
+        throw 'HTTP ${response.statusCode}';
+      }
+      Directory? dir;
+      if (Platform.isAndroid || Platform.isIOS) {
+        dir = await getApplicationDocumentsDirectory();
+      } else {
+        dir = await getDownloadsDirectory();
+      }
+      dir ??= await getApplicationDocumentsDirectory();
+      final mime = response.headers['content-type']?.split(';').first.trim();
+      final ext = switch (mime) {
+        'image/jpeg' => 'jpg',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp',
+        _ => 'png',
+      };
+      final file = File(
+        '${dir.path}/qingyu-${DateTime.now().millisecondsSinceEpoch}.$ext',
+      );
+      await file.writeAsBytes(response.bodyBytes, flush: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('图片已保存到 ${file.path}')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败：$error')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final time = widget.time;
     return Dialog.fullscreen(
       backgroundColor: Colors.black,
       child: Stack(
@@ -327,7 +387,7 @@ class _ImageViewerDialog extends StatelessWidget {
             maxScale: 4,
             child: Center(
               child: Image.network(
-                url,
+                widget.url,
                 fit: BoxFit.contain,
                 loadingBuilder: (context, child, progress) => progress == null
                     ? child
@@ -347,18 +407,104 @@ class _ImageViewerDialog extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: 0,
+            left: 0,
             right: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Material(
-                  color: Colors.black54,
-                  shape: const CircleBorder(),
-                  child: IconButton(
-                    tooltip: '关闭',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded, color: Colors.white),
+            top: 0,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xB3000000), Color(0x00000000)],
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Row(
+                  children: [
+                    IconButton(
+                      tooltip: '返回',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        '图片预览',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '关闭',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Color(0xB3000000), Color(0x00000000)],
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+                  child: Row(
+                    children: [
+                      if (time != null)
+                        Text(
+                          DateFormat('MM月dd日 HH:mm').format(time),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                          ),
+                        ),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: _saving ? null : _save,
+                        icon: _saving
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white70,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.download_rounded,
+                                size: 17,
+                                color: Colors.white,
+                              ),
+                        label: Text(
+                          _saving ? '保存中…' : '保存图片',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

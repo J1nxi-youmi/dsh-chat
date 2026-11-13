@@ -813,28 +813,13 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Widget _uploadBanner() {
     return Container(
       width: double.infinity,
-      color: AppTheme.panelAlt,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          SizedBox(width: 8),
-          Text('正在上传…', style: TextStyle(fontSize: 12, color: AppTheme.muted)),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppTheme.accent.withValues(alpha: 0.05),
+        border: Border(
+          bottom: BorderSide(color: AppTheme.accent.withValues(alpha: 0.12)),
+        ),
       ),
-    );
-  }
-
-  Widget _connectionBanner() {
-    return Container(
-      width: double.infinity,
-      color: const Color(0xFF3A2E12),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -843,13 +828,39 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             height: 12,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: Color(0xFFE8B93E),
+              color: AppTheme.accent,
+            ),
+          ),
+          SizedBox(width: 8),
+          Text('正在上传…', style: TextStyle(fontSize: 11, color: AppTheme.accent)),
+        ],
+      ),
+    );
+  }
+
+  Widget _connectionBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFF6E8),
+        border: Border(bottom: BorderSide(color: Color(0xFFF0DAB8))),
+      ),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 11,
+            height: 11,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Color(0xFFB8873F),
             ),
           ),
           SizedBox(width: 8),
           Text(
             '连接中断，正在重连…',
-            style: TextStyle(fontSize: 12, color: Color(0xFFE8B93E)),
+            style: TextStyle(fontSize: 11, color: Color(0xFF9B722E)),
           ),
         ],
       ),
@@ -998,82 +1009,152 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Widget _pendingStrip() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
+      padding: const EdgeInsets.fromLTRB(2, 4, 2, 6),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: _pending.map((item) {
-          final isImage = item.isImage;
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: isImage ? 64 : null,
-                height: isImage ? 64 : null,
-                padding: isImage
-                    ? EdgeInsets.zero
-                    : const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppTheme.panelAlt,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.line),
-                  image: isImage && item.bytes != null
-                      ? DecorationImage(
-                          image: Image.memory(
-                            item.bytes!,
-                            fit: BoxFit.cover,
-                          ).image,
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: isImage
-                    ? (item.bytes == null
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const SizedBox.shrink())
-                    : Text(
-                        item.isVoice ? '🎙️ 语音' : '📎 ${item.name}',
-                        style: const TextStyle(fontSize: 12),
+        children: _pending.map(_pendingTile).toList(),
+      ),
+    );
+  }
+
+  Widget _pendingTile(_PendingItem item) {
+    if (item.isImage) {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: AppTheme.panelAlt,
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: AppTheme.line),
+              image: item.bytes == null
+                  ? null
+                  : DecorationImage(
+                      image: Image.memory(item.bytes!, fit: BoxFit.cover).image,
+                      fit: BoxFit.cover,
+                    ),
+            ),
+            child: !item.ready
+                ? Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.24),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       ),
-              ),
-              if (!item.ready)
-                const Positioned(
-                  left: 4,
-                  bottom: 4,
-                  child: SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                    ),
+                  )
+                : null,
+          ),
+          Positioned(
+            right: -5,
+            top: -5,
+            child: GestureDetector(
+              onTap: () => setState(() => _pending.remove(item)),
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: const BoxDecoration(
+                  color: AppTheme.error,
+                  shape: BoxShape.circle,
                 ),
-              Positioned(
-                right: -6,
-                top: -6,
-                child: GestureDetector(
-                  onTap: () => setState(() => _pending.remove(item)),
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.error,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      size: 12,
-                      color: Colors.white,
-                    ),
-                  ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  size: 12,
+                  color: Colors.white,
                 ),
               ),
-            ],
-          );
-        }).toList(),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final size = item.ready
+        ? item.attachment!.sizeText
+        : '${((item.bytes?.length ?? 0) / 1024).round().clamp(1, 9999)} KB';
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 260),
+      padding: const EdgeInsets.fromLTRB(8, 8, 7, 8),
+      decoration: BoxDecoration(
+        color: AppTheme.panelAlt,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: AppTheme.line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 30,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppTheme.accent.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              item.isVoice
+                  ? Icons.mic_none_rounded
+                  : Icons.insert_drive_file_outlined,
+              size: 17,
+              color: AppTheme.accent,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  item.isVoice ? '语音' : item.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.text,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  item.ready ? size : '上传中… · $size',
+                  style: const TextStyle(fontSize: 8, color: AppTheme.muted),
+                ),
+                if (!item.ready)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: const LinearProgressIndicator(
+                        minHeight: 3,
+                        backgroundColor: AppTheme.line,
+                        color: AppTheme.accent,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => setState(() => _pending.remove(item)),
+            child: const Icon(
+              Icons.close_rounded,
+              size: 15,
+              color: AppTheme.muted,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1634,31 +1715,65 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Widget _recordingHint() {
     final seconds = _recorded.inMilliseconds / 1000;
     final color = _recordCancelled ? AppTheme.muted : AppTheme.error;
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _recordCancelled ? Icons.close_rounded : Icons.graphic_eq_rounded,
-              size: 16,
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          if (_recordCancelled)
+            Icon(Icons.close_rounded, size: 15, color: color)
+          else
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.25),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _recordCancelled ? '已取消录音' : '正在录音',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _recordCancelled ? '松开取消' : '松开发送 · 上滑取消',
+                  style: const TextStyle(fontSize: 8.5, color: AppTheme.muted),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${seconds.toStringAsFixed(1)}s',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
               color: color,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
-            const SizedBox(width: 8),
-            Text(
-              _recordCancelled
-                  ? '松开取消'
-                  : '录音中 ${seconds.toStringAsFixed(1)}s · 松开发送，上滑取消',
-              style: TextStyle(fontSize: 12, color: color),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

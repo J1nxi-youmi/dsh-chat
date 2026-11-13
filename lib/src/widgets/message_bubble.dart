@@ -250,7 +250,7 @@ class AttachmentView extends StatelessWidget {
           context: context,
           barrierColor: Colors.black87,
           builder: (_) =>
-              _ImageViewerDialog(url: mediaUrl(attachment.url), time: sentAt),
+              ImageViewerDialog(url: mediaUrl(attachment.url), time: sentAt),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
@@ -321,26 +321,48 @@ class AttachmentView extends StatelessWidget {
 }
 
 /// 图片全屏预览：顶部返回/关闭，底部时间和保存。
-class _ImageViewerDialog extends StatefulWidget {
-  const _ImageViewerDialog({required this.url, this.time});
+class ImageViewerDialog extends StatefulWidget {
+  const ImageViewerDialog({
+    super.key,
+    this.url,
+    this.bytes,
+    this.time,
+    this.title = '图片预览',
+  }) : assert(url != null || bytes != null);
 
-  final String url;
+  final String? url;
+  final Uint8List? bytes;
   final DateTime? time;
+  final String title;
 
   @override
-  State<_ImageViewerDialog> createState() => _ImageViewerDialogState();
+  State<ImageViewerDialog> createState() => ImageViewerDialogState();
 }
 
-class _ImageViewerDialogState extends State<_ImageViewerDialog> {
+class ImageViewerDialogState extends State<ImageViewerDialog> {
   bool _saving = false;
 
   Future<void> _save() async {
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      final response = await http.get(Uri.parse(widget.url));
-      if (response.statusCode != 200) {
-        throw 'HTTP ${response.statusCode}';
+      Uint8List data;
+      var ext = 'png';
+      if (widget.bytes != null) {
+        data = widget.bytes!;
+      } else {
+        final response = await http.get(Uri.parse(widget.url!));
+        if (response.statusCode != 200) {
+          throw 'HTTP ${response.statusCode}';
+        }
+        data = response.bodyBytes;
+        final mime = response.headers['content-type']?.split(';').first.trim();
+        ext = switch (mime) {
+          'image/jpeg' => 'jpg',
+          'image/gif' => 'gif',
+          'image/webp' => 'webp',
+          _ => 'png',
+        };
       }
       Directory? dir;
       if (Platform.isAndroid || Platform.isIOS) {
@@ -349,17 +371,10 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
         dir = await getDownloadsDirectory();
       }
       dir ??= await getApplicationDocumentsDirectory();
-      final mime = response.headers['content-type']?.split(';').first.trim();
-      final ext = switch (mime) {
-        'image/jpeg' => 'jpg',
-        'image/gif' => 'gif',
-        'image/webp' => 'webp',
-        _ => 'png',
-      };
       final file = File(
         '${dir.path}/qingyu-${DateTime.now().millisecondsSinceEpoch}.$ext',
       );
-      await file.writeAsBytes(response.bodyBytes, flush: true);
+      await file.writeAsBytes(data, flush: true);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -386,24 +401,27 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
             minScale: 0.8,
             maxScale: 4,
             child: Center(
-              child: Image.network(
-                widget.url,
-                fit: BoxFit.contain,
-                loadingBuilder: (context, child, progress) => progress == null
-                    ? child
-                    : const Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white70,
+              child: widget.bytes != null
+                  ? Image.memory(widget.bytes!, fit: BoxFit.contain)
+                  : Image.network(
+                      widget.url!,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, progress) =>
+                          progress == null
+                          ? child
+                          : const Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white70,
+                              ),
+                            ),
+                      errorBuilder: (_, __, ___) => const Center(
+                        child: Text(
+                          '图片加载失败',
+                          style: TextStyle(color: Colors.white70),
                         ),
                       ),
-                errorBuilder: (_, __, ___) => const Center(
-                  child: Text(
-                    '图片加载失败',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                ),
-              ),
+                    ),
             ),
           ),
           Positioned(
@@ -430,10 +448,10 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
                         color: Colors.white,
                       ),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        '图片预览',
-                        style: TextStyle(
+                        widget.title,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,

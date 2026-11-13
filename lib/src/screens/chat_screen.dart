@@ -1023,38 +1023,51 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       return Stack(
         clipBehavior: Clip.none,
         children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: AppTheme.panelAlt,
-              borderRadius: BorderRadius.circular(11),
-              border: Border.all(color: AppTheme.line),
-              image: item.bytes == null
-                  ? null
-                  : DecorationImage(
-                      image: Image.memory(item.bytes!, fit: BoxFit.cover).image,
-                      fit: BoxFit.cover,
-                    ),
-            ),
-            child: !item.ready
-                ? Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.24),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Center(
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+          GestureDetector(
+            onTap: item.bytes == null
+                ? null
+                : () => showDialog<void>(
+                    context: context,
+                    barrierColor: Colors.black87,
+                    builder: (_) =>
+                        ImageViewerDialog(bytes: item.bytes, title: '待发送图片'),
+                  ),
+            child: Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: AppTheme.panelAlt,
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: AppTheme.line),
+                image: item.bytes == null
+                    ? null
+                    : DecorationImage(
+                        image: Image.memory(
+                          item.bytes!,
+                          fit: BoxFit.cover,
+                        ).image,
+                        fit: BoxFit.cover,
+                      ),
+              ),
+              child: !item.ready
+                  ? Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.24),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                    ),
-                  )
-                : null,
+                    )
+                  : null,
+            ),
           ),
           Positioned(
             right: -5,

@@ -29,13 +29,15 @@ class UpdateInfo {
   final String? zipUrl;
   final String? pageUrl;
 
-  /// release 正文里写着「构建 #123」，用它和本机构建号比。
+  /// 构建号只藏在 release 正文的 HTML 注释里，不显示给用户。
   int get buildNumber {
-    final match = RegExp(r'构建\s*#(\d+)').firstMatch(body);
+    final match =
+        RegExp(r'<!--\s*build:(\d+)\s*-->').firstMatch(body) ??
+        RegExp(r'构建\s*#(\d+)').firstMatch(body);
     return int.tryParse(match?.group(1) ?? '') ?? 0;
   }
 
-  /// 正文里的版本号，例如「最新版本：v0.2.0」。
+  /// 正文里的版本号，例如「最新版本：v1.2.2」。
   String get versionLabel {
     final match = RegExp(r'最新版本[:：]\s*(v[\w.\-]+)').firstMatch(body);
     return match?.group(1) ?? tag;
@@ -51,12 +53,14 @@ class UpdateInfo {
 /// 查更新、下载、拉起安装。
 class UpdateService {
   static const defaultSource = 'https://github.com/J1nxi-youmi/dsh-chat';
-  // CI 注入 x.xx.xx 版本号（0.10.10 之后进位为 1.01.01），
-  // 本地构建没注入时退化成 0.3.0。
-  static const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.3.0');
+  // CI 把构建号拆成版本号：构建 #122 -> 1.2.2，显示 v1.2.2。
+  // 本地构建没注入时退化成 v0.3.0。
+  static const appVersion = String.fromEnvironment(
+    'APP_VERSION',
+    defaultValue: '0.3.0',
+  );
   static const appBuild = int.fromEnvironment('APP_BUILD', defaultValue: 0);
 
-  /// 界面只显示版本号，构建号只在内部比较用。
   static String get displayVersion => 'v$appVersion';
 
   static Future<String> source() async {
@@ -74,12 +78,17 @@ class UpdateService {
     final prefs = await SharedPreferences.getInstance();
     final server = prefs.getString('server');
     final token = prefs.getString('token');
-    if (server == null || server.isEmpty || token == null || token.isEmpty) return null;
+    if (server == null || server.isEmpty || token == null || token.isEmpty) {
+      return null;
+    }
     return '$server/api/proxy?t=${Uri.encodeComponent(token)}';
   }
 
   /// 打开一个 GitHub 资源：先直连，超时/失败自动走隧道代理。
-  static Future<http.StreamedResponse> _openStream(String url, {Duration? timeout}) async {
+  static Future<http.StreamedResponse> _openStream(
+    String url, {
+    Duration? timeout,
+  }) async {
     final client = http.Client();
     try {
       final resp = await client
@@ -92,14 +101,22 @@ class UpdateService {
     final proxy = await _proxyBase();
     if (proxy == null) throw '连不上 GitHub（也没有可用的隧道代理）';
     final resp = await client
-        .send(http.Request('GET', Uri.parse('$proxy&url=${Uri.encodeComponent(url)}')))
+        .send(
+          http.Request(
+            'GET',
+            Uri.parse('$proxy&url=${Uri.encodeComponent(url)}'),
+          ),
+        )
         .timeout(timeout ?? const Duration(seconds: 60));
     if (resp.statusCode != 200) throw '隧道代理下载失败（HTTP ${resp.statusCode}）';
     return resp;
   }
 
   /// GET 一个文本资源（JSON API），带隧道兜底。
-  static Future<String?> _readString(String url, {Map<String, String>? headers}) async {
+  static Future<String?> _readString(
+    String url, {
+    Map<String, String>? headers,
+  }) async {
     final resp = await _openStream(url);
     final body = await http.Response.fromStream(resp);
     if (body.statusCode != 200) return null;
@@ -117,7 +134,10 @@ class UpdateService {
     final repo = match.group(2)!.replaceAll(RegExp(r'\.git$'), '');
     final data = await _readString(
       'https://api.github.com/repos/$owner/$repo/releases/latest',
-      headers: {'accept': 'application/vnd.github+json', 'user-agent': 'dsh-chat'},
+      headers: {
+        'accept': 'application/vnd.github+json',
+        'user-agent': 'dsh-chat',
+      },
     );
     if (data == null) throw '查询更新失败';
     final json = const JsonDecoder().convert(data) as Map<String, dynamic>;
@@ -125,7 +145,9 @@ class UpdateService {
     String? findAsset(String suffix) {
       for (final item in assets.whereType<Map<String, dynamic>>()) {
         final name = (item['name'] ?? '').toString().toLowerCase();
-        if (name.endsWith(suffix)) return item['browser_download_url']?.toString();
+        if (name.endsWith(suffix)) {
+          return item['browser_download_url']?.toString();
+        }
       }
       return null;
     }
@@ -134,7 +156,10 @@ class UpdateService {
       tag: (json['tag_name'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
       body: (json['body'] ?? '').toString(),
-      publishedAt: DateTime.tryParse((json['published_at'] ?? '').toString())?.toLocal() ??
+      publishedAt:
+          DateTime.tryParse(
+            (json['published_at'] ?? '').toString(),
+          )?.toLocal() ??
           DateTime.now(),
       apkUrl: findAsset('.apk'),
       setupUrl: findAsset('setup.exe'),
@@ -144,19 +169,30 @@ class UpdateService {
   }
 
   /// Windows 下载安装包并启动；Android 下载 APK 后调起系统安装器；两者都带进度回调。
-  static Future<String> install(UpdateInfo info, {void Function(double)? onProgress}) async {
+  static Future<String> install(
+    UpdateInfo info, {
+    void Function(double)? onProgress,
+  }) async {
     final url = info.downloadUrl;
     if (url == null) throw '这个 release 里没有可下载的文件';
     final isExe = Platform.isWindows && url.toLowerCase().endsWith('.exe');
     final isApk = Platform.isAndroid && url.toLowerCase().endsWith('.apk');
     if (!isExe && !isApk) {
-      final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      final ok = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
       if (!ok) throw '打不开下载地址';
       return '已在浏览器打开下载页';
     }
     final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/${isExe ? 'dsh-chat-setup.exe' : 'dsh-chat.apk'}');
-    final response = await _openStream(url, timeout: const Duration(seconds: 60));
+    final file = File(
+      '${dir.path}/${isExe ? 'dsh-chat-setup.exe' : 'dsh-chat.apk'}',
+    );
+    final response = await _openStream(
+      url,
+      timeout: const Duration(seconds: 60),
+    );
     final total = response.contentLength ?? 0;
     final sink = file.openWrite();
     var received = 0;

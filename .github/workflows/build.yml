@@ -188,7 +188,8 @@ jobs:
           set -e
           VERSION=$(bash tool/version.sh "${{ github.run_number }}")
           {
-            echo "最新版本：v${VERSION}（构建 #${{ github.run_number }}）"
+            echo "最新版本：v${VERSION}"
+            echo "<!-- build:${{ github.run_number }} -->"
             echo
             echo "### 本版更新内容"
             echo

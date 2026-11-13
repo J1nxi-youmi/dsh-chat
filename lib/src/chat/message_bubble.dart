@@ -28,6 +28,49 @@ enum _MessageAction {
   transcribe,
 }
 
+class _MenuArrow extends StatelessWidget {
+  const _MenuArrow({required this.pointsDown});
+
+  final bool pointsDown;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(14, 7),
+      painter: _MenuArrowPainter(pointsDown),
+    );
+  }
+}
+
+class _MenuArrowPainter extends CustomPainter {
+  _MenuArrowPainter(this.pointsDown);
+
+  final bool pointsDown;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = const Color(0xFF3A3E42);
+    final path = Path();
+    if (pointsDown) {
+      path
+        ..moveTo(0, 0)
+        ..lineTo(size.width, 0)
+        ..lineTo(size.width / 2, size.height);
+    } else {
+      path
+        ..moveTo(0, size.height)
+        ..lineTo(size.width, size.height)
+        ..lineTo(size.width / 2, 0);
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_MenuArrowPainter oldDelegate) =>
+      oldDelegate.pointsDown != pointsDown;
+}
+
 /// 一条消息：文字（链接可点）、图片、语音、文件。
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
@@ -224,7 +267,7 @@ class MessageBubble extends StatelessWidget {
 
     final action = desktop
         ? await _showDesktopMenu(context, position, entries)
-        : await _showMobileMenu(context, entries);
+        : await _showMobileMenu(context, position, entries);
     if (action == null || !context.mounted) return;
 
     switch (action) {
@@ -322,59 +365,90 @@ class MessageBubble extends StatelessWidget {
 
   Future<_MessageAction?> _showMobileMenu(
     BuildContext context,
+    Offset position,
     List<_MessageAction> entries,
   ) {
-    return showModalBottomSheet<_MessageAction>(
+    final size = MediaQuery.sizeOf(context);
+    const itemWidth = 68.0;
+    const barHeight = 64.0;
+    const arrowHeight = 7.0;
+    const gap = 10.0;
+    final width = entries.length * itemWidth + 12;
+    const totalHeight = barHeight + arrowHeight;
+    final left = (position.dx - width / 2).clamp(8.0, size.width - width - 8);
+    final showAbove = position.dy - totalHeight - gap >= 8;
+    final top = showAbove ? position.dy - totalHeight - gap : position.dy + gap;
+
+    return showDialog<_MessageAction>(
       context: context,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.16),
-      builder: (sheetContext) => SafeArea(
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(18, 0, 18, 14),
-          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFF303438),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.24),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              for (final action in entries)
-                Expanded(
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: () => Navigator.of(sheetContext).pop(action),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 3),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _actionIcon(action),
-                            size: 22,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            _actionLabel(action),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.white,
-                            ),
+      barrierColor: Colors.transparent,
+      barrierDismissible: true,
+      builder: (dialogContext) => SizedBox(
+        width: size.width,
+        height: size.height,
+        child: Stack(
+          children: [
+            Positioned(
+              left: left,
+              top: top,
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!showAbove) const _MenuArrow(pointsDown: false),
+                    Container(
+                      width: width,
+                      height: barHeight,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3A3E42),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.24),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),
+                      child: Row(
+                        children: [
+                          for (final action in entries)
+                            SizedBox(
+                              width: itemWidth,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(10),
+                                onTap: () =>
+                                    Navigator.of(dialogContext).pop(action),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      _actionIcon(action),
+                                      size: 22,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      _actionLabel(action),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
+                    if (showAbove) const _MenuArrow(pointsDown: true),
+                  ],
                 ),
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );

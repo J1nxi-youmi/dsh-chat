@@ -31,6 +31,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   List<Conversation> _items = const [];
   bool _loading = true;
   final TextEditingController _search = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   String _query = '';
   int? _latency;
   bool _connected = false;
@@ -41,7 +42,12 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     super.initState();
     _connected = widget.api.connected.value;
     widget.api.connected.addListener(_onConnection);
+    _searchFocus.addListener(_onSearchFocus);
     _load();
+  }
+
+  void _onSearchFocus() {
+    if (mounted) setState(() {});
   }
 
   void _onConnection() {
@@ -53,6 +59,8 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   @override
   void dispose() {
     widget.api.connected.removeListener(_onConnection);
+    _searchFocus.removeListener(_onSearchFocus);
+    _searchFocus.dispose();
     _search.dispose();
     super.dispose();
   }
@@ -199,41 +207,49 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: SizedBox(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 120),
                 height: 42,
-                child: TextField(
-                  controller: _search,
-                  onChanged: (value) => setState(() => _query = value),
-                  style: const TextStyle(fontSize: 11),
-                  textAlignVertical: TextAlignVertical.center,
-                  decoration: InputDecoration(
-                    hintText: '搜索会话',
-                    isDense: true,
-                    prefixIcon: const Icon(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.panelAlt,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _searchFocus.hasFocus
+                        ? AppTheme.accent
+                        : AppTheme.line,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
                       Icons.search_rounded,
                       size: 16,
                       color: AppTheme.muted,
                     ),
-                    prefixIconConstraints: const BoxConstraints(
-                      minWidth: 40,
-                      minHeight: 0,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _search,
+                        focusNode: _searchFocus,
+                        onChanged: (value) => setState(() => _query = value),
+                        style: const TextStyle(fontSize: 11),
+                        textAlignVertical: TextAlignVertical.center,
+                        decoration: const InputDecoration(
+                          hintText: '搜索会话',
+                          isCollapsed: true,
+                          filled: false,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          hintStyle: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.muted,
+                          ),
+                        ),
+                      ),
                     ),
-                    filled: true,
-                    fillColor: AppTheme.panelAlt,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.line),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.line),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.accent),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                  ),
+                  ],
                 ),
               ),
             ),

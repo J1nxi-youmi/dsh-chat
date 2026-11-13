@@ -42,8 +42,14 @@ class _VersionScreenState extends State<VersionScreen> {
             style: const TextStyle(height: 1.5, fontSize: 13),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('稍后')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('去更新')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('稍后'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('去更新'),
+            ),
           ],
         ),
       );
@@ -66,16 +72,22 @@ class _VersionScreenState extends State<VersionScreen> {
   }
 
   Future<void> _download(UpdateInfo info) async {
-    final inAppDownload = (info.setupUrl ?? '').toLowerCase().endsWith('.exe') ||
-        (Platform.isAndroid && (info.apkUrl ?? '').toLowerCase().endsWith('.apk'));
+    final inAppDownload =
+        (info.setupUrl ?? '').toLowerCase().endsWith('.exe') ||
+        (Platform.isAndroid &&
+            (info.apkUrl ?? '').toLowerCase().endsWith('.apk'));
     if (!inAppDownload) {
       try {
         final message = await UpdateService.install(info);
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       } catch (error) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$error')));
       }
       return;
     }
@@ -96,7 +108,9 @@ class _VersionScreenState extends State<VersionScreen> {
               LinearProgressIndicator(value: value == 0 ? null : value),
               const SizedBox(height: 10),
               Text(
-                value == 0 ? '连接下载地址…' : '已下载 ${(value * 100).toStringAsFixed(0)}%',
+                value == 0
+                    ? '连接下载地址…'
+                    : '已下载 ${(value * 100).toStringAsFixed(0)}%',
                 style: const TextStyle(fontSize: 12, color: AppTheme.muted),
               ),
             ],
@@ -119,12 +133,17 @@ class _VersionScreenState extends State<VersionScreen> {
     );
 
     try {
-      final message = await UpdateService.install(info, onProgress: (value) {
-        progress.value = value;
-      });
+      final message = await UpdateService.install(
+        info,
+        onProgress: (value) {
+          progress.value = value;
+        },
+      );
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (error) {
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
       if (!mounted) return;
@@ -135,8 +154,10 @@ class _VersionScreenState extends State<VersionScreen> {
               ? null
               : SnackBarAction(
                   label: '打开下载页',
-                  onPressed: () => launchUrl(Uri.parse(info.pageUrl!),
-                      mode: LaunchMode.externalApplication),
+                  onPressed: () => launchUrl(
+                    Uri.parse(info.pageUrl!),
+                    mode: LaunchMode.externalApplication,
+                  ),
                 ),
         ),
       );
@@ -149,10 +170,24 @@ class _VersionScreenState extends State<VersionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('版本'),
+        backgroundColor: AppTheme.panel,
+        surfaceTintColor: Colors.transparent,
+        title: const Text('版本与更新'),
         actions: [
-          IconButton(onPressed: _reload, icon: const Icon(Icons.refresh_rounded)),
+          IconButton(
+            tooltip: '检查更新',
+            onPressed: _reload,
+            icon: const Icon(
+              Icons.refresh_rounded,
+              size: 20,
+              color: AppTheme.muted,
+            ),
+          ),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: AppTheme.line),
+        ),
       ),
       body: StarryBackground(
         child: FutureBuilder<UpdateInfo>(
@@ -163,16 +198,40 @@ class _VersionScreenState extends State<VersionScreen> {
             }
             if (snapshot.hasError) {
               return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('${snapshot.error}', textAlign: TextAlign.center,
-                          style: const TextStyle(color: AppTheme.error)),
-                      const SizedBox(height: 12),
-                      FilledButton(onPressed: _reload, child: const Text('重试')),
-                    ],
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Container(
+                    margin: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: AppTheme.panel,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.line),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.cloud_off_rounded,
+                          size: 32,
+                          color: AppTheme.muted,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '${snapshot.error}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.error,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        FilledButton(
+                          onPressed: _reload,
+                          child: const Text('重试'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -180,54 +239,223 @@ class _VersionScreenState extends State<VersionScreen> {
             final info = snapshot.data!;
             _maybePrompt(info);
             final hasNew = info.buildNumber > UpdateService.appBuild;
-            return ListView(
-              padding: const EdgeInsets.all(18),
-              children: [
-                const Text('当前版本', style: TextStyle(color: AppTheme.muted, fontSize: 12)),
-                const SizedBox(height: 4),
-                Text(
-                  UpdateService.displayVersion,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            final notes = info.body.trim().isEmpty
+                ? '这个版本没有写更新说明。'
+                : _pretty(info.body).trim();
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(17),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFFF1F6F3), AppTheme.panelAlt],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.line),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.accentGradient,
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: const Icon(
+                              Icons.chat_bubble_rounded,
+                              size: 24,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 13),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Dshchat',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  '让每一次对话随时继续',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: AppTheme.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (hasNew)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.accent.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              child: const Text(
+                                'NEW',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.accent,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _versionBox(
+                            '当前版本',
+                            UpdateService.displayVersion,
+                            accent: false,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _versionBox(
+                            '最新版本',
+                            info.versionLabel,
+                            accent: hasNew,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.panel,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.line),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text(
+                                '更新说明',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const Spacer(),
+                              if (!hasNew)
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 13,
+                                      color: AppTheme.accent,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '已是最新',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        color: AppTheme.accent.withValues(
+                                          alpha: 0.9,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          SelectableText(
+                            notes,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              height: 1.7,
+                              color: AppTheme.text,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    if (hasNew) ...[
+                      FilledButton.icon(
+                        onPressed: () => _download(info),
+                        icon: const Icon(Icons.download_rounded, size: 17),
+                        label: Text('下载并安装 ${info.versionLabel}'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46),
+                        ),
+                      ),
+                      const SizedBox(height: 9),
+                    ],
+                    if (info.pageUrl != null)
+                      OutlinedButton.icon(
+                        onPressed: () => launchUrl(
+                          Uri.parse(info.pageUrl!),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                        icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                        label: const Text('打开 Release 页面'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(42),
+                          foregroundColor: AppTheme.muted,
+                          side: const BorderSide(color: AppTheme.line),
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 18),
-                const Text('最新版本', style: TextStyle(color: AppTheme.muted, fontSize: 12)),
-                const SizedBox(height: 4),
-                Text(
-                  info.versionLabel,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: hasNew ? AppTheme.gold : AppTheme.text,
-                  ),
-                ),
-                if (hasNew) ...[
-                  const SizedBox(height: 6),
-                  const Text('有新版本可以更新', style: TextStyle(fontSize: 12, color: AppTheme.gold)),
-                ],
-                const SizedBox(height: 18),
-                const Text('更新说明', style: TextStyle(color: AppTheme.muted, fontSize: 12)),
-                const SizedBox(height: 6),
-                SelectableText(
-                  info.body.trim().isEmpty ? '（这个 release 没有写说明）' : _pretty(info.body),
-                  style: const TextStyle(fontSize: 13, height: 1.6),
-                ),
-                const SizedBox(height: 22),
-                if (hasNew)
-                  FilledButton(
-                    onPressed: () => _download(info),
-                    child: Text('下载并安装 ${info.versionLabel}'),
-                  ),
-                const SizedBox(height: 8),
-                if (info.pageUrl != null)
-                  OutlinedButton(
-                    onPressed: () => launchUrl(Uri.parse(info.pageUrl!),
-                        mode: LaunchMode.externalApplication),
-                    child: const Text('打开 Release 页'),
-                  ),
-              ],
+              ),
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _versionBox(String label, String value, {required bool accent}) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 13),
+      decoration: BoxDecoration(
+        color: AppTheme.panel,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 9, color: AppTheme.muted),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: accent ? AppTheme.accent : AppTheme.text,
+            ),
+          ),
+        ],
       ),
     );
   }

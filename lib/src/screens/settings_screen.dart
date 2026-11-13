@@ -29,6 +29,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   String _source = UpdateService.defaultSource;
   int _section = 0;
+  bool _testing = false;
 
   @override
   void initState() {
@@ -68,6 +69,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await UpdateService.setSource(value);
     if (!mounted) return;
     setState(() => _source = value);
+  }
+
+  Future<void> _testConnection() async {
+    if (_testing) return;
+    setState(() => _testing = true);
+    try {
+      await widget.api.conversations();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('连接正常，可以正常收发消息')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('连接失败：$error')));
+    } finally {
+      if (mounted) setState(() => _testing = false);
+    }
   }
 
   Future<void> _switchServer() async {
@@ -370,14 +390,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 14),
           _infoField('更新源', _source, Icons.link_rounded, onTap: _editSource),
           const SizedBox(height: 22),
-          OutlinedButton.icon(
-            onPressed: _switchServer,
-            icon: const Icon(Icons.swap_horiz_rounded, size: 17),
-            label: const Text('换一台 DSH'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.error,
-              side: const BorderSide(color: AppTheme.line),
-            ),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: _testing ? null : _testConnection,
+                icon: _testing
+                    ? const SizedBox(
+                        width: 13,
+                        height: 13,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.wifi_tethering_rounded, size: 17),
+                label: Text(_testing ? '测试中…' : '测试连接'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.accent,
+                  side: const BorderSide(color: AppTheme.line),
+                ),
+              ),
+              const Spacer(),
+              OutlinedButton.icon(
+                onPressed: _switchServer,
+                icon: const Icon(Icons.swap_horiz_rounded, size: 17),
+                label: const Text('换一台 DSH'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.error,
+                  side: const BorderSide(color: AppTheme.line),
+                ),
+              ),
+            ],
           ),
         ];
     }

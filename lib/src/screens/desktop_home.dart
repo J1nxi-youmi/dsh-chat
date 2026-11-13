@@ -10,6 +10,7 @@ import '../theme.dart';
 import 'chat_screen.dart';
 import 'profile_dialog.dart';
 import 'settings_screen.dart';
+import '../widgets/message_search_dialog.dart';
 
 /// 桌面端：会话列表 + 右侧聊天，青屿陪伴版的双栏布局。
 class DesktopHome extends StatefulWidget {
@@ -165,6 +166,19 @@ class _DesktopHomeState extends State<DesktopHome> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _openChatSearch(Conversation conversation) async {
+    try {
+      final detail = await widget.api.conversation(conversation.id);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => MessageSearchDialog(messages: detail.messages),
+      );
+    } catch (error) {
+      _toast('搜索失败：$error');
+    }
   }
 
   List<Conversation> get _filtered {
@@ -642,6 +656,15 @@ class _DesktopHomeState extends State<DesktopHome> {
                   ],
                 ),
               ],
+            ),
+          ),
+          IconButton(
+            tooltip: '搜索聊天',
+            onPressed: () => _openChatSearch(conversation),
+            icon: const Icon(
+              Icons.search_rounded,
+              size: 19,
+              color: AppTheme.muted,
             ),
           ),
           IconButton(

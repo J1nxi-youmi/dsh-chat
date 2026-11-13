@@ -17,6 +17,7 @@ import '../image_utils.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/message_search_dialog.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({
@@ -753,6 +754,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: '搜索聊天',
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => MessageSearchDialog(messages: _messages),
+            ),
+            icon: const Icon(
+              Icons.search_rounded,
+              size: 20,
+              color: AppTheme.muted,
+            ),
+          ),
           IconButton(
             tooltip: '刷新',
             onPressed: _load,

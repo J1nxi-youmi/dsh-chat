@@ -200,7 +200,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: SizedBox(
-                height: 34,
+                height: 42,
                 child: TextField(
                   controller: _search,
                   onChanged: (value) => setState(() => _query = value),
@@ -211,25 +211,25 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                     isDense: true,
                     prefixIcon: const Icon(
                       Icons.search_rounded,
-                      size: 15,
+                      size: 16,
                       color: AppTheme.muted,
                     ),
                     prefixIconConstraints: const BoxConstraints(
-                      minWidth: 36,
+                      minWidth: 40,
                       minHeight: 0,
                     ),
                     filled: true,
                     fillColor: AppTheme.panelAlt,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppTheme.line),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppTheme.line),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppTheme.accent),
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 0),

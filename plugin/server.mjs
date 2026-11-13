@@ -658,11 +658,19 @@ async function handleApi(req, res, url) {
   if (req.method === 'POST' && path === '/api/transcribe') {
     const body = await readJson(req);
     const id = String(body.id ?? '').trim();
-    const media = db.media[id];
-    if (!media?.diskPath) return fail(res, 404, '找不到这条语音');
-    if (!config.asrCommand) return fail(res, 400, '未配置语音转写命令');
-    const transcript = await transcribeVoice(media.diskPath);
-    if (!transcript) return fail(res, 422, '语音转写没有返回结果');
+    let filePath = String(body.file ?? '').trim();
+    if (!filePath && body.url) {
+      const url = String(body.url);
+      const mediaId = url.match(/\/media\/([^/.?]+)/)?.[1] ?? '';
+      filePath = db.media[mediaId]?.diskPath ?? '';
+    }
+    if (!filePath && id) filePath = db.media[id]?.diskPath ?? '';
+    if (!filePath) return fail(res, 404, '找不到这条语音（传 id/url/file 之一）');
+    if (!config.asrCommand) {
+      return fail(res, 503, '服务端没有配置 asrCommand');
+    }
+    const transcript = await transcribeVoice(filePath);
+    if (!transcript) return fail(res, 502, '语音转写失败，没有返回结果');
     return json(res, 200, { ok: true, text: transcript });
   }
 

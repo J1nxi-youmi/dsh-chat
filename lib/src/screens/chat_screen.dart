@@ -174,7 +174,7 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final atBottom =
         contentCount == 0 ||
         _itemPositions.itemPositions.value.any(
-          (position) => position.index == contentCount,
+          (position) => position.index == 0,
         );
     if (atBottom == _atBottom) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -287,13 +287,12 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           _atBottom = true;
         });
       }
-      // 列表末尾有一个 1px 锚点；alignment: 1 把锚点顶部贴住底部，
-      // 等价于滚到 maxScrollExtent。
+      // 反向列表的 index 0 是底部 1px 锚点。
       unawaited(
         _itemScroll
             .scrollTo(
-              index: contentCount,
-              alignment: 1,
+              index: 0,
+              alignment: 0,
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
             )
@@ -938,14 +937,15 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Future<void> _jumpToMessage(Message target) async {
     final index = _messages.indexWhere((item) => item.id == target.id);
     if (index < 0) return;
+    final contentCount = _messages.length + _outbox.length + (_sending ? 1 : 0);
     setState(() => _highlightedMessageId = target.id);
     await Future<void>.delayed(Duration.zero);
     if (!mounted || !_itemScroll.isAttached) return;
     await _itemScroll.scrollTo(
-      index: index,
+      index: contentCount - index,
       duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
-      alignment: 0.25,
+      alignment: 0.5,
     );
     await Future<void>.delayed(const Duration(milliseconds: 1600));
     if (mounted && _highlightedMessageId == target.id) {
@@ -1008,32 +1008,32 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           maxWidth: _isDesktop ? 780 : double.infinity,
         ),
         child: ScrollablePositionedList.builder(
+          reverse: true,
           itemScrollController: _itemScroll,
           itemPositionsListener: _itemPositions,
           padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
-          itemCount:
-              _messages.length +
-              _outbox.length +
-              (_sending ? 1 : 0) +
-              ((_messages.isEmpty && _outbox.isEmpty && !_sending) ? 0 : 1),
+          itemCount: _messages.length + _outbox.length + (_sending ? 1 : 0) > 0
+              ? _messages.length + _outbox.length + (_sending ? 1 : 0) + 1
+              : 0,
           itemBuilder: (context, index) {
             final contentCount =
                 _messages.length + _outbox.length + (_sending ? 1 : 0);
-            if (index == contentCount) {
+            if (index == 0) {
               return const SizedBox(height: 1);
             }
-            if (index < _messages.length) {
-              final message = _messages[index];
+            final contentIndex = contentCount - index;
+            if (contentIndex < _messages.length) {
+              final message = _messages[contentIndex];
               final bubble = MessageBubble(
                 message: message,
                 mediaUrl: widget.api.mediaUrl,
                 highlighted: _highlightedMessageId == message.id,
               );
-              return _needsDivider(index)
+              return _needsDivider(contentIndex)
                   ? Column(children: [_timeDivider(message.at), bubble])
                   : bubble;
             }
-            final outboxIndex = index - _messages.length;
+            final outboxIndex = contentIndex - _messages.length;
             if (outboxIndex < _outbox.length) {
               final item = _outbox[outboxIndex];
               return MessageBubble(

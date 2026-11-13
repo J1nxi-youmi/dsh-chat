@@ -40,11 +40,17 @@ Name: "quicklaunchicon"; Description: "创建快速启动栏图标"; GroupDescri
 [Files]
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
+[InstallDelete]
+; 升级安装时清掉旧版本留下的 dsh-chat 快捷方式，避免和 Dshchat 并存。
+Type: files; Name: "{autodesktop}\dsh-chat.lnk"
+Type: files; Name: "{commonprograms}\Dshchat\dsh-chat.lnk"
+Type: files; Name: "{commonprograms}\Dshchat\卸载 dsh-chat.lnk"
+
 [Icons]
-Name: "{group}\dsh-chat"; Filename: "{app}\{#AppExe}"
-Name: "{group}\卸载 dsh-chat"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\dsh-chat"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\dsh-chat"; Filename: "{app}\{#AppExe}"; Tasks: quicklaunchicon
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
+Name: "{group}\卸载 {#AppName}"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: quicklaunchicon
 
 [Run]
-Filename: "{app}\{#AppExe}"; Description: "启动 dsh-chat"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExe}"; Description: "启动 {#AppName}"; Flags: nowait postinstall skipifsilent

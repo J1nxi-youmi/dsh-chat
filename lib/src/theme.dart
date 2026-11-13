@@ -203,14 +203,12 @@ class UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (image != null) {
-      return AvatarBadge(name: name, size: size, image: image, onTap: onTap);
-    }
     final initial = name.isEmpty ? '我' : name.substring(0, 1);
-    Widget face = Container(
+    final Widget face = Container(
       width: size,
       height: size,
       alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: const LinearGradient(
@@ -225,14 +223,16 @@ class UserAvatar extends StatelessWidget {
           ),
         ],
       ),
-      child: Text(
-        initial,
-        style: TextStyle(
-          fontSize: size * 0.42,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-        ),
-      ),
+      child: image != null
+          ? Image(image: image!, fit: BoxFit.cover, width: size, height: size)
+          : Text(
+              initial,
+              style: TextStyle(
+                fontSize: size * 0.42,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
     );
     if (onTap == null) return face;
     return GestureDetector(onTap: onTap, child: face);
@@ -265,10 +265,14 @@ class AvatarBadge extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: AppTheme.accentGradient,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFEDF2FF), Color(0xFFDDE6FA)],
+        ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.accent.withValues(alpha: 0.18),
+            color: const Color(0xFF5A7194).withValues(alpha: 0.12),
             blurRadius: 10,
             spreadRadius: 0,
           ),
@@ -295,7 +299,7 @@ class AvatarBadge extends StatelessWidget {
           style: TextStyle(
             fontSize: size * 0.42,
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: const Color(0xFF455A7A),
           ),
         ),
       );

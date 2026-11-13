@@ -232,6 +232,26 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                 ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 5),
+              child: Row(
+                children: [
+                  const Text(
+                    '最近会话',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.muted,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${_filtered.length}',
+                    style: const TextStyle(fontSize: 9, color: AppTheme.muted),
+                  ),
+                ],
+              ),
+            ),
             Expanded(
               child: RefreshIndicator(onRefresh: _load, child: _body()),
             ),
@@ -259,13 +279,19 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _create,
-        backgroundColor: AppTheme.accent,
-        foregroundColor: Colors.white,
+      floatingActionButton: Material(
+        color: AppTheme.accent,
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.add_comment_rounded),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(15),
+          onTap: _create,
+          child: const SizedBox(
+            width: 50,
+            height: 50,
+            child: Icon(Icons.add_rounded, size: 24, color: Colors.white),
+          ),
+        ),
       ),
     );
   }

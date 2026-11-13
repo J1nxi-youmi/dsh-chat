@@ -131,9 +131,19 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeMetrics() {
-    // 键盘弹出/收起时可视高度变化；只在当前本来就贴底时跟随。
+    // 键盘开合会改变视口高度。输入框有焦点时用户正在聊天，应跟随底部；
+    // 只在真正翻历史且未聚焦时才保持当前位置。
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _atBottom) _jumpToBottom();
+      if (!mounted) return;
+      if (_atBottom || _inputFocus.hasFocus) {
+        _jumpToBottom();
+        // 键盘动画结束后再校一次，避免停在动画中间的高度。
+        Future<void>.delayed(const Duration(milliseconds: 260), () {
+          if (mounted && (_atBottom || _inputFocus.hasFocus)) {
+            _jumpToBottom();
+          }
+        });
+      }
     });
   }
 

@@ -291,9 +291,22 @@ class MessageBubble extends StatelessWidget {
           ];
     if (entries.isEmpty) return;
 
+    final box = context.findRenderObject() as RenderBox?;
+    final topLeft = box?.localToGlobal(Offset.zero);
+    final bubbleTop = topLeft?.dy ?? position.dy - 40;
+    final bubbleBottom = topLeft == null
+        ? position.dy + 40
+        : topLeft.dy + box!.size.height;
+
     final action = desktop
         ? await _showDesktopMenu(context, position, entries)
-        : await _showMobileMenu(context, position, entries);
+        : await _showMobileMenu(
+            context,
+            position,
+            entries,
+            bubbleTop: bubbleTop,
+            bubbleBottom: bubbleBottom,
+          );
     if (action == null || !context.mounted) return;
 
     switch (action) {
@@ -392,8 +405,10 @@ class MessageBubble extends StatelessWidget {
   Future<_MessageAction?> _showMobileMenu(
     BuildContext context,
     Offset position,
-    List<_MessageAction> entries,
-  ) {
+    List<_MessageAction> entries, {
+    required double bubbleTop,
+    required double bubbleBottom,
+  }) {
     final size = MediaQuery.sizeOf(context);
     const itemWidth = 68.0;
     const barHeight = 64.0;
@@ -402,8 +417,9 @@ class MessageBubble extends StatelessWidget {
     final width = entries.length * itemWidth + 12;
     const totalHeight = barHeight + arrowHeight;
     final left = (position.dx - width / 2).clamp(8.0, size.width - width - 8);
-    final showAbove = position.dy - totalHeight - gap >= 8;
-    final top = showAbove ? position.dy - totalHeight - gap : position.dy + gap;
+    // 以气泡边界为准，不跟手指位置跑：优先悬在气泡上方。
+    final showAbove = bubbleTop - totalHeight - gap >= 8;
+    final top = showAbove ? bubbleTop - totalHeight - gap : bubbleBottom + gap;
 
     return showDialog<_MessageAction>(
       context: context,

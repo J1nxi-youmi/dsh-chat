@@ -73,7 +73,7 @@ class _MenuArrowPainter extends CustomPainter {
 
 /// 一条消息：文字（链接可点）、图片、语音、文件。
 class MessageBubble extends StatelessWidget {
-  const MessageBubble({
+  MessageBubble({
     super.key,
     required this.message,
     required this.mediaUrl,
@@ -104,6 +104,7 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onTranscribe;
   final String? transcript;
   final bool transcribing;
+  final _bubbleKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +142,7 @@ class MessageBubble extends StatelessWidget {
           if (!mine) avatar,
           Flexible(
             child: Container(
+              key: _bubbleKey,
               margin: EdgeInsets.only(
                 bottom: 10,
                 left: mine ? 0 : 6,
@@ -295,21 +297,24 @@ class MessageBubble extends StatelessWidget {
           ];
     if (entries.isEmpty) return;
 
-    final box = context.findRenderObject() as RenderBox?;
+    final box = _bubbleKey.currentContext?.findRenderObject() as RenderBox?;
     final topLeft = box?.localToGlobal(Offset.zero);
     final bubbleTop = topLeft?.dy ?? position.dy - 40;
     final bubbleBottom = topLeft == null
         ? position.dy + 40
         : topLeft.dy + box!.size.height;
+    final bubbleCenterX = topLeft == null
+        ? position.dx
+        : topLeft.dx + box!.size.width / 2;
 
     final action = desktop
         ? await _showDesktopMenu(context, position, entries)
         : await _showMobileMenu(
             context,
-            position,
             entries,
             bubbleTop: bubbleTop,
             bubbleBottom: bubbleBottom,
+            bubbleCenterX: bubbleCenterX,
           );
     if (action == null || !context.mounted) return;
 
@@ -408,10 +413,10 @@ class MessageBubble extends StatelessWidget {
 
   Future<_MessageAction?> _showMobileMenu(
     BuildContext context,
-    Offset position,
     List<_MessageAction> entries, {
     required double bubbleTop,
     required double bubbleBottom,
+    required double bubbleCenterX,
   }) {
     final size = MediaQuery.sizeOf(context);
     const itemWidth = 42.0;
@@ -420,7 +425,7 @@ class MessageBubble extends StatelessWidget {
     const gap = 8.0;
     final width = entries.length * itemWidth + 12;
     const totalHeight = barHeight + arrowHeight;
-    final left = (position.dx - width / 2).clamp(8.0, size.width - width - 8);
+    final left = (bubbleCenterX - width / 2).clamp(8.0, size.width - width - 8);
     // 以气泡边界为准，不跟手指位置跑：优先悬在气泡上方。
     final showAbove = bubbleTop - totalHeight - gap >= 8;
     final top = showAbove ? bubbleTop - totalHeight - gap : bubbleBottom + gap;

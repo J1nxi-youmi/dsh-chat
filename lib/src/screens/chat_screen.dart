@@ -1112,10 +1112,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                 size: 20,
                                 color: AppTheme.muted,
                               ),
-                              constraints: const BoxConstraints.tightFor(
-                                width: 32,
-                                height: 32,
-                              ),
+                              iconSize: 20,
                               onSelected: (value) {
                                 if (value == 'image') {
                                   _pickFiles(imagesOnly: true);

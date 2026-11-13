@@ -200,11 +200,7 @@ class ChatScreenState extends State<ChatScreen> {
       });
       final added = _messages.length - before;
       if (added <= 0) return;
-      if (_atBottom) {
-        _jumpToBottom();
-      } else {
-        setState(() => _unreadBelow += added);
-      }
+      if (!_atBottom) setState(() => _unreadBelow += added);
     } catch (_) {
       /* 下次重连再补 */
     }
@@ -237,37 +233,40 @@ class ChatScreenState extends State<ChatScreen> {
       return;
     }
     final before = _messages.length;
-    final wasAtBottom = _atBottom;
     setState(() => _merge(message));
     if (_messages.length <= before) return;
-    if (wasAtBottom) {
-      _jumpToBottom();
-    } else {
-      setState(() => _unreadBelow += 1);
-    }
+    if (!_atBottom) setState(() => _unreadBelow += 1);
   }
 
-  void _jumpToBottom({int attempt = 0}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!_itemScroll.isAttached) {
-        if (attempt < 3) _jumpToBottom(attempt: attempt + 1);
-        return;
-      }
-      final contentCount =
-          _messages.length + _outbox.length + (_sending ? 1 : 0);
-      if (contentCount == 0) return;
-      if (_unreadBelow != 0 || !_atBottom) {
-        setState(() {
-          _unreadBelow = 0;
-          _atBottom = true;
-        });
-      }
-      // 反向列表的 index 0 是底部 1px 锚点。
-      // 用 jumpTo 而不是 scrollTo：发送后列表会立刻重建，动画容易被取消，
-      // 停在旧消息的位置。
-      _itemScroll.jumpTo(index: 0, alignment: 0);
+  void _jumpToBottom() {
+    _jumpNow();
+    // 本地消息插入后还会重建一帧，帧末再强制贴一次。
+    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpNow());
+  }
+
+  /// 发送动作专用：先贴底，等列表完成一次重排后再校一次。
+  /// 收到消息不会调用这里，避免浏览时被拽走。
+  void _settleAfterSend() {
+    _jumpToBottom();
+    Future<void>.delayed(const Duration(milliseconds: 350), () {
+      if (mounted && _atBottom) _jumpToBottom();
     });
+  }
+
+  void _jumpNow() {
+    if (!mounted || !_itemScroll.isAttached) return;
+    final contentCount = _messages.length + _outbox.length + (_sending ? 1 : 0);
+    if (contentCount == 0) return;
+    if (_unreadBelow != 0 || !_atBottom) {
+      setState(() {
+        _unreadBelow = 0;
+        _atBottom = true;
+      });
+    }
+    // 反向列表的 index 0 是底部 1px 锚点。
+    // 用 jumpTo 而不是 scrollTo：发送后列表会立刻重建，动画容易被取消，
+    // 停在旧消息的位置。
+    _itemScroll.jumpTo(index: 0, alignment: 0);
   }
 
   Future<void> _pickFiles({bool imagesOnly = false}) async {
@@ -597,11 +596,13 @@ class ChatScreenState extends State<ChatScreen> {
       _pending.clear();
       _outbox.add(item);
     });
+    // 本地消息先出现，此时立刻贴底；接口返回后再校一次。
+    _jumpToBottom();
     await _saveOutbox();
     await _deliver(item);
     if (mounted) {
       setState(() {});
-      _jumpToBottom();
+      _settleAfterSend();
     }
   }
 
@@ -703,10 +704,11 @@ class ChatScreenState extends State<ChatScreen> {
   Future<void> _retry(Outgoing item) async {
     item.status = 'sending';
     if (mounted) setState(() {});
+    _jumpToBottom();
     await _deliver(item);
     if (mounted) {
       setState(() {});
-      _jumpToBottom();
+      _settleAfterSend();
     }
   }
 
@@ -1464,11 +1466,12 @@ class ChatScreenState extends State<ChatScreen> {
       at: DateTime.now(),
     );
     if (mounted) setState(() => _outbox.add(item));
+    _jumpToBottom();
     await _saveOutbox();
     await _deliver(item);
     if (mounted) {
       setState(() {});
-      _jumpToBottom();
+      _settleAfterSend();
     }
   }
 

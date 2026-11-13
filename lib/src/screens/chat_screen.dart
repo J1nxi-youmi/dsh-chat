@@ -1228,7 +1228,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     '😂',
     '🤗',
     '😎',
-    '🫶',
+    '💛',
     '❤️',
     '✨',
     '🌙',
@@ -1247,7 +1247,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     '👏',
     '👍',
     '🙌',
-    '🫂',
+    '🤝',
     '🌊',
   ];
 
@@ -1266,52 +1266,120 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _showEmojiPicker() async {
-    final emoji = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: AppTheme.panel,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '表情',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.text,
-                ),
-              ),
-              const SizedBox(height: 12),
-              GridView.count(
-                crossAxisCount: 8,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 4,
-                crossAxisSpacing: 4,
+    String? emoji;
+    if (_isDesktop) {
+      emoji = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => Dialog(
+          backgroundColor: AppTheme.panel,
+          surfaceTintColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: AppTheme.line),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final e in _emojis)
-                    InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      onTap: () => Navigator.of(sheetContext).pop(e),
-                      child: Center(
-                        child: Text(e, style: const TextStyle(fontSize: 24)),
+                  Row(
+                    children: [
+                      const Text(
+                        '表情',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.text,
+                        ),
                       ),
-                    ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: '关闭',
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: AppTheme.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  _emojiGrid((value) => Navigator.of(dialogContext).pop(value)),
                 ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } else {
+      emoji = await showModalBottomSheet<String>(
+        context: context,
+        backgroundColor: AppTheme.panel,
+        showDragHandle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        builder: (sheetContext) => SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '表情',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.text,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _emojiGrid(
+                      (value) => Navigator.of(sheetContext).pop(value),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     if (emoji != null) _insertEmoji(emoji);
+  }
+
+  Widget _emojiGrid(void Function(String) onPick) {
+    return GridView.count(
+      crossAxisCount: 8,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 6,
+      crossAxisSpacing: 6,
+      childAspectRatio: 1,
+      children: [
+        for (final e in _emojis)
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(9),
+              onTap: () => onPick(e),
+              child: Center(
+                child: Text(e, style: const TextStyle(fontSize: 21)),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   Widget _emojiButton() {

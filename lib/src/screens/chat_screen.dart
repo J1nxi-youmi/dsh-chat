@@ -218,15 +218,23 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _jumpToBottom();
   }
 
-  void _jumpToBottom() {
+  void _jumpToBottom({int attempt = 0}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_itemScroll.isAttached) return;
-      final count = _messages.length + _outbox.length + (_sending ? 1 : 0);
-      if (count == 0) return;
+      if (!mounted) return;
+      if (!_itemScroll.isAttached) {
+        if (attempt < 3) _jumpToBottom(attempt: attempt + 1);
+        return;
+      }
+      final contentCount =
+          _messages.length + _outbox.length + (_sending ? 1 : 0);
+      if (contentCount == 0) return;
+      // 列表末尾有一个 1px 锚点；alignment: 1 把锚点顶部贴住底部，
+      // 等价于滚到 maxScrollExtent。
       unawaited(
         _itemScroll
             .scrollTo(
-              index: count - 1,
+              index: contentCount,
+              alignment: 1,
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
             )
@@ -894,8 +902,17 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         child: ScrollablePositionedList.builder(
           itemScrollController: _itemScroll,
           padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
-          itemCount: _messages.length + _outbox.length + (_sending ? 1 : 0),
+          itemCount:
+              _messages.length +
+              _outbox.length +
+              (_sending ? 1 : 0) +
+              ((_messages.isEmpty && _outbox.isEmpty && !_sending) ? 0 : 1),
           itemBuilder: (context, index) {
+            final contentCount =
+                _messages.length + _outbox.length + (_sending ? 1 : 0);
+            if (index == contentCount) {
+              return const SizedBox(height: 1);
+            }
             if (index < _messages.length) {
               final message = _messages[index];
               final bubble = MessageBubble(

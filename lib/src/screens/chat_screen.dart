@@ -139,14 +139,14 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   /// 键盘动画会连续触发多次 metrics；等最后一次 inset 变化结束后再校准，
   /// 避免列表停在键盘动画中间的高度、收起后底部留空。
-  void _scheduleKeyboardSettle() {
+  void _scheduleKeyboardSettle({bool force = false}) {
     _keyboardSettleTimer?.cancel();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_atBottom || _inputFocus.hasFocus) _jumpToBottom();
+      if (force || _atBottom || _inputFocus.hasFocus) _jumpToBottom();
     });
     _keyboardSettleTimer = Timer(const Duration(milliseconds: 360), () {
-      if (mounted && (_atBottom || _inputFocus.hasFocus)) {
+      if (mounted && (force || _atBottom || _inputFocus.hasFocus)) {
         _jumpToBottom();
       }
     });
@@ -776,8 +776,9 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     if (keyboardInset != _lastKeyboardInset) {
+      final closing = _lastKeyboardInset > 0 && keyboardInset == 0;
       _lastKeyboardInset = keyboardInset;
-      _scheduleKeyboardSettle();
+      _scheduleKeyboardSettle(force: closing);
     }
     final inner = Column(
       children: [

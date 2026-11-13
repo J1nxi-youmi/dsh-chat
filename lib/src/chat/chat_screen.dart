@@ -65,6 +65,8 @@ class ChatScreenState extends State<ChatScreen> {
   String? _highlightedMessageId;
   Message? _replyTo;
   final Set<String> _hiddenMessageIds = {};
+  final Map<String, String> _transcripts = {};
+  final Set<String> _transcribing = {};
 
   /// 待发送附件：先显示本地预览，上传在后台跑，点发送时若还没传完就等它。
   final List<PendingAttachment> _pending = [];
@@ -154,11 +156,28 @@ class ChatScreenState extends State<ChatScreen> {
       final conversation = await widget.api.conversation(widget.conversationId);
       final prefs = await SharedPreferences.getInstance();
       final hidden = prefs.getStringList(_hiddenKey) ?? const [];
+      final transcriptRaw = prefs.getString(_transcriptKey);
+      final transcripts = <String, String>{};
+      if (transcriptRaw != null) {
+        try {
+          final decoded = jsonDecode(transcriptRaw);
+          if (decoded is Map) {
+            for (final entry in decoded.entries) {
+              transcripts[entry.key.toString()] = entry.value.toString();
+            }
+          }
+        } catch (_) {
+          /* 坏缓存忽略 */
+        }
+      }
       if (!mounted) return;
       setState(() {
         _hiddenMessageIds
           ..clear()
           ..addAll(hidden);
+        _transcripts
+          ..clear()
+          ..addAll(transcripts);
         _messages = conversation.messages
             .where((message) => !_hiddenMessageIds.contains(message.id))
             .toList();
@@ -584,6 +603,7 @@ class ChatScreenState extends State<ChatScreen> {
 
   String get _outboxKey => 'chat.outbox.${widget.conversationId}';
   String get _hiddenKey => 'chat.hidden.${widget.conversationId}';
+  String get _transcriptKey => 'chat.transcript.${widget.conversationId}';
 
   String _newClientId() {
     final now = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
@@ -958,7 +978,8 @@ class ChatScreenState extends State<ChatScreen> {
       _toast('这条消息没有语音附件');
       return;
     }
-    _toast('正在转写语音…');
+    if (_transcribing.contains(message.id)) return;
+    setState(() => _transcribing.add(message.id));
     try {
       final text = await widget.api.transcribe(voice.id);
       if (!mounted) return;
@@ -966,27 +987,13 @@ class ChatScreenState extends State<ChatScreen> {
         _toast('语音转写没有返回内容');
         return;
       }
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          backgroundColor: AppTheme.panel,
-          title: const Text('语音转文字'),
-          content: SingleChildScrollView(
-            child: SelectableText(
-              text,
-              style: const TextStyle(fontSize: 13, height: 1.6),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('关闭'),
-            ),
-          ],
-        ),
-      );
+      setState(() => _transcripts[message.id] = text.trim());
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_transcriptKey, jsonEncode(_transcripts));
     } catch (error) {
       if (mounted) _toast('转写失败：$error');
+    } finally {
+      if (mounted) setState(() => _transcribing.remove(message.id));
     }
   }
 
@@ -1016,6 +1023,8 @@ class ChatScreenState extends State<ChatScreen> {
       onReply: _startReply,
       onDelete: _hideMessage,
       onTranscribe: _transcribeVoice,
+      transcripts: _transcripts,
+      transcribing: _transcribing,
     );
   }
 

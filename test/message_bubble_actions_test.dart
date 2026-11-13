@@ -202,4 +202,49 @@ void main() {
     expect(find.text('删除本地显示'), findsOneWidget);
     expect(find.text('复制'), findsNothing);
   });
+
+  testWidgets('语音转写结果直接显示在气泡里', (tester) async {
+    final message = Message(
+      id: 'm6',
+      role: 'assistant',
+      text: '',
+      attachments: [
+        Attachment(
+          id: 'voice-2',
+          kind: 'voice',
+          name: 'voice.m4a',
+          mime: 'audio/mp4',
+          size: 2048,
+          duration: 3,
+          url: '/api/files/voice-2',
+        ),
+      ],
+      at: DateTime(2026, 11, 14, 5, 29),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(platform: TargetPlatform.windows),
+        home: Scaffold(
+          body: Column(
+            children: [
+              MessageBubble(
+                message: message,
+                mediaUrl: (value) => value,
+                transcribing: true,
+              ),
+              MessageBubble(
+                message: message,
+                mediaUrl: (value) => value,
+                transcript: '这是语音转写结果',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('正在转写…'), findsOneWidget);
+    expect(find.text('这是语音转写结果'), findsOneWidget);
+  });
 }

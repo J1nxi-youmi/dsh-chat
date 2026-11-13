@@ -83,6 +83,8 @@ class MessageBubble extends StatelessWidget {
     this.onReply,
     this.onDelete,
     this.onTranscribe,
+    this.transcript,
+    this.transcribing = false,
   });
 
   final Message message;
@@ -100,6 +102,8 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onReply;
   final VoidCallback? onDelete;
   final VoidCallback? onTranscribe;
+  final String? transcript;
+  final bool transcribing;
 
   @override
   Widget build(BuildContext context) {
@@ -177,6 +181,11 @@ class MessageBubble extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                   ],
+                  if (message.attachments.any((item) => item.isVoice) &&
+                      (transcript != null || transcribing)) ...[
+                    _transcriptView(),
+                    const SizedBox(height: 4),
+                  ],
                   if (message.text.isNotEmpty) _text(context),
                   const SizedBox(height: 2),
                   Row(
@@ -216,7 +225,24 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  /// 长按/右键消息：桌面弹浮动菜单，手机弹底部面板。
+  Widget _transcriptView() {
+    return Container(
+      padding: const EdgeInsets.only(top: 6),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppTheme.line)),
+      ),
+      child: Text(
+        transcribing ? '正在转写…' : transcript!,
+        style: const TextStyle(
+          fontSize: 12.5,
+          height: 1.45,
+          color: AppTheme.text,
+        ),
+      ),
+    );
+  }
+
+  /// 长按/右键消息：桌面弹浮动菜单，手机弹操作条。
   Future<void> _showActions(BuildContext context, Offset position) async {
     final text = message.text.trim();
     final desktop = switch (Theme.of(context).platform) {

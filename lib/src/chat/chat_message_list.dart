@@ -42,7 +42,7 @@ class ChatMessageList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final contentCount = _contentCount;
-    return Align(
+    final list = Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -86,6 +86,8 @@ class ChatMessageList extends StatelessWidget {
         ),
       ),
     );
+    // 桌面端允许鼠标左键拖选气泡内文字，Ctrl+C 直接复制。
+    return isDesktop ? SelectionArea(child: list) : list;
   }
 
   bool _needsDivider(int index) {

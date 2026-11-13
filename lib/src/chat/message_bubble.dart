@@ -9,13 +9,24 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:dsh_chat/src/chat/chat_file_actions.dart';
 import 'package:dsh_chat/src/core/models.dart';
 import 'package:dsh_chat/src/core/profile.dart';
 import 'package:dsh_chat/src/core/theme.dart';
 
 final _linkPattern = RegExp('https?://[^\\s<>\'"]+');
 
-enum _MessageAction { copy, reply, share, delete }
+enum _MessageAction {
+  copy,
+  reply,
+  share,
+  delete,
+  copyFile,
+  saveAs,
+  save,
+  open,
+  openFolder,
+}
 
 /// 一条消息：文字（链接可点）、图片、语音、文件。
 class MessageBubble extends StatelessWidget {
@@ -165,15 +176,31 @@ class MessageBubble extends StatelessWidget {
   /// 长按/右键消息：桌面弹浮动菜单，手机弹底部面板。
   Future<void> _showActions(BuildContext context, Offset position) async {
     final text = message.text.trim();
-    final entries = <_MessageAction>[
-      if (text.isNotEmpty) _MessageAction.copy,
-      if (onReply != null) _MessageAction.reply,
-      if (onShare != null) _MessageAction.share,
-      if (onDelete != null) _MessageAction.delete,
-    ];
+    final desktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    Attachment? file;
+    for (final attachment in message.attachments) {
+      if (!attachment.isImage && !attachment.isVoice) {
+        file = attachment;
+        break;
+      }
+    }
+    final entries = file != null
+        ? <_MessageAction>[
+            if (desktop) _MessageAction.copyFile,
+            _MessageAction.saveAs,
+            _MessageAction.save,
+            _MessageAction.open,
+            if (desktop) _MessageAction.openFolder,
+            if (onDelete != null) _MessageAction.delete,
+          ]
+        : <_MessageAction>[
+            if (text.isNotEmpty) _MessageAction.copy,
+            if (onReply != null) _MessageAction.reply,
+            if (onShare != null) _MessageAction.share,
+            if (onDelete != null) _MessageAction.delete,
+          ];
     if (entries.isEmpty) return;
 
-    final desktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
     final action = desktop
         ? await _showDesktopMenu(context, position, entries)
         : await _showMobileMenu(context, entries);
@@ -196,6 +223,43 @@ class MessageBubble extends StatelessWidget {
       case _MessageAction.delete:
         onDelete?.call();
         break;
+      case _MessageAction.copyFile:
+      case _MessageAction.saveAs:
+      case _MessageAction.save:
+      case _MessageAction.open:
+      case _MessageAction.openFolder:
+        await _runFileAction(context, file!, action);
+        break;
+    }
+  }
+
+  Future<void> _runFileAction(
+    BuildContext context,
+    Attachment file,
+    _MessageAction action,
+  ) async {
+    final url = mediaUrl(file.url);
+    try {
+      final result = switch (action) {
+        _MessageAction.copyFile => await ChatFileActions.copy(url, file),
+        _MessageAction.saveAs => await ChatFileActions.saveAs(url, file),
+        _MessageAction.save => await ChatFileActions.save(url, file),
+        _MessageAction.open => await ChatFileActions.open(url, file),
+        _MessageAction.openFolder => await ChatFileActions.openFolder(
+          url,
+          file,
+        ),
+        _ => '不支持的操作',
+      };
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result)));
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('操作失败：$error')));
     }
   }
 
@@ -297,6 +361,11 @@ class MessageBubble extends StatelessWidget {
       _MessageAction.reply => Icons.reply_rounded,
       _MessageAction.share => Icons.share_rounded,
       _MessageAction.delete => Icons.delete_outline_rounded,
+      _MessageAction.copyFile => Icons.content_copy_rounded,
+      _MessageAction.saveAs => Icons.save_as_outlined,
+      _MessageAction.save => Icons.download_rounded,
+      _MessageAction.open => Icons.open_in_new_rounded,
+      _MessageAction.openFolder => Icons.folder_open_rounded,
     };
   }
 
@@ -306,6 +375,11 @@ class MessageBubble extends StatelessWidget {
       _MessageAction.reply => '引用回复',
       _MessageAction.share => '分享到群',
       _MessageAction.delete => '删除本地显示',
+      _MessageAction.copyFile => '复制',
+      _MessageAction.saveAs => '另存为',
+      _MessageAction.save => '保存',
+      _MessageAction.open => '打开',
+      _MessageAction.openFolder => '打开文件夹',
     };
   }
 

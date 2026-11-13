@@ -271,6 +271,10 @@ class MessageBubble extends StatelessWidget {
               _MessageAction.save,
               _MessageAction.open,
               _MessageAction.openFolder,
+            ] else if (image != null) ...[
+              _MessageAction.copyFile,
+              _MessageAction.saveAs,
+              _MessageAction.save,
             ] else ...[
               if (text.isNotEmpty) _MessageAction.copy,
               if (onReply != null) _MessageAction.reply,

@@ -87,6 +87,48 @@ void main() {
     expect(find.text('删除本地显示'), findsOneWidget);
   });
 
+  testWidgets('桌面图片消息显示复制、另存为、保存、删除', (tester) async {
+    final message = Message(
+      id: 'image-desktop',
+      role: 'assistant',
+      text: '',
+      attachments: [
+        Attachment(
+          id: 'image-2',
+          kind: 'image',
+          name: 'photo.png',
+          mime: 'image/png',
+          size: 2048,
+          duration: 0,
+          url: '/api/files/image-2',
+        ),
+      ],
+      at: DateTime(2026, 11, 14, 6, 6),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(platform: TargetPlatform.windows),
+        home: Scaffold(
+          body: MessageBubble(
+            message: message,
+            mediaUrl: (value) => 'http://127.0.0.1$value',
+            onDelete: () {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.longPress(find.byType(MessageBubble));
+    await tester.pumpAndSettle();
+
+    expect(find.text('复制'), findsOneWidget);
+    expect(find.text('另存为'), findsOneWidget);
+    expect(find.text('保存'), findsOneWidget);
+    expect(find.text('删除本地显示'), findsOneWidget);
+    expect(find.text('引用回复'), findsNothing);
+  });
+
   testWidgets('手机文字菜单只有复制和删除', (tester) async {
     final message = Message(
       id: 'm3',

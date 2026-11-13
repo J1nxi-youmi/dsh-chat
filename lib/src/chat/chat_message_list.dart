@@ -19,6 +19,9 @@ class ChatMessageList extends StatelessWidget {
     required this.itemPositionsListener,
     required this.isDesktop,
     required this.onRetry,
+    required this.onReply,
+    required this.onShare,
+    required this.onDelete,
   });
 
   final List<Message> messages;
@@ -30,6 +33,9 @@ class ChatMessageList extends StatelessWidget {
   final ItemPositionsListener itemPositionsListener;
   final bool isDesktop;
   final ValueChanged<Outgoing> onRetry;
+  final ValueChanged<Message> onReply;
+  final ValueChanged<Message> onShare;
+  final ValueChanged<Message> onDelete;
 
   int get _contentCount => messages.length + outbox.length + (sending ? 1 : 0);
 
@@ -57,6 +63,9 @@ class ChatMessageList extends StatelessWidget {
                 message: message,
                 mediaUrl: mediaUrl,
                 highlighted: highlightedMessageId == message.id,
+                onReply: () => onReply(message),
+                onShare: () => onShare(message),
+                onDelete: () => onDelete(message),
               );
               return _needsDivider(contentIndex)
                   ? Column(children: [_timeDivider(message.at), bubble])

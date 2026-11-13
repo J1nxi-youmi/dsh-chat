@@ -15,6 +15,8 @@ import 'package:dsh_chat/src/core/theme.dart';
 
 final _linkPattern = RegExp('https?://[^\\s<>\'"]+');
 
+enum _MessageAction { copy, reply, share, delete }
+
 /// 一条消息：文字（链接可点）、图片、语音、文件。
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
@@ -24,6 +26,9 @@ class MessageBubble extends StatelessWidget {
     this.status,
     this.onRetry,
     this.highlighted = false,
+    this.onReply,
+    this.onShare,
+    this.onDelete,
   });
 
   final Message message;
@@ -37,6 +42,10 @@ class MessageBubble extends StatelessWidget {
 
   /// 从搜索结果跳转过来时短暂高亮。
   final bool highlighted;
+
+  final VoidCallback? onReply;
+  final VoidCallback? onShare;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -60,8 +69,11 @@ class MessageBubble extends StatelessWidget {
             bottomRight: Radius.circular(16),
           );
     return GestureDetector(
-      onLongPress: () => _showActions(context),
-      onSecondaryTap: () => _showActions(context),
+      behavior: HitTestBehavior.opaque,
+      onLongPressStart: (details) =>
+          _showActions(context, details.globalPosition),
+      onSecondaryTapDown: (details) =>
+          _showActions(context, details.globalPosition),
       child: Row(
         mainAxisAlignment: mine
             ? MainAxisAlignment.end
@@ -150,10 +162,83 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  /// 长按消息：复制文字（桌面端也可以右键打开同一个菜单）。
-  void _showActions(BuildContext context) {
+  /// 长按/右键消息：桌面弹浮动菜单，手机弹底部面板。
+  Future<void> _showActions(BuildContext context, Offset position) async {
     final text = message.text.trim();
-    showModalBottomSheet<void>(
+    final entries = <_MessageAction>[
+      if (text.isNotEmpty) _MessageAction.copy,
+      if (onReply != null) _MessageAction.reply,
+      if (onShare != null) _MessageAction.share,
+      if (onDelete != null) _MessageAction.delete,
+    ];
+    if (entries.isEmpty) return;
+
+    final desktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    final action = desktop
+        ? await _showDesktopMenu(context, position, entries)
+        : await _showMobileMenu(context, entries);
+    if (action == null || !context.mounted) return;
+
+    switch (action) {
+      case _MessageAction.copy:
+        await Clipboard.setData(ClipboardData(text: text));
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已复制')));
+        break;
+      case _MessageAction.reply:
+        onReply?.call();
+        break;
+      case _MessageAction.share:
+        onShare?.call();
+        break;
+      case _MessageAction.delete:
+        onDelete?.call();
+        break;
+    }
+  }
+
+  Future<_MessageAction?> _showDesktopMenu(
+    BuildContext context,
+    Offset globalPosition,
+    List<_MessageAction> entries,
+  ) {
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (overlay == null) return Future.value();
+    final local = overlay.globalToLocal(globalPosition);
+    final position = RelativeRect.fromLTRB(
+      local.dx,
+      local.dy,
+      overlay.size.width - local.dx,
+      overlay.size.height - local.dy,
+    );
+    return showMenu<_MessageAction>(
+      context: context,
+      position: position,
+      color: AppTheme.panel,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppTheme.line),
+      ),
+      items: [
+        for (final action in entries)
+          PopupMenuItem<_MessageAction>(
+            value: action,
+            height: 40,
+            child: _menuRow(action),
+          ),
+      ],
+    );
+  }
+
+  Future<_MessageAction?> _showMobileMenu(
+    BuildContext context,
+    List<_MessageAction> entries,
+  ) {
+    return showModalBottomSheet<_MessageAction>(
       context: context,
       backgroundColor: AppTheme.panel,
       showDragHandle: true,
@@ -164,36 +249,97 @@ class MessageBubble extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (text.isNotEmpty)
+            for (final action in entries)
               ListTile(
-                leading: const Icon(Icons.copy_rounded, color: AppTheme.accent),
-                title: const Text('复制文字'),
-                onTap: () async {
-                  await Clipboard.setData(ClipboardData(text: text));
-                  if (!sheetContext.mounted) return;
-                  Navigator.of(sheetContext).pop();
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('已复制')));
-                },
+                leading: Icon(
+                  _actionIcon(action),
+                  color: action == _MessageAction.delete
+                      ? AppTheme.error
+                      : AppTheme.accent,
+                  size: 20,
+                ),
+                title: Text(
+                  _actionLabel(action),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: action == _MessageAction.delete
+                        ? AppTheme.error
+                        : AppTheme.text,
+                  ),
+                ),
+                onTap: () => Navigator.of(sheetContext).pop(action),
               ),
-            ListTile(
-              leading: const Icon(Icons.close_rounded, color: AppTheme.muted),
-              title: const Text('关闭'),
-              onTap: () => Navigator.of(sheetContext).pop(),
-            ),
           ],
         ),
       ),
     );
   }
 
+  Widget _menuRow(_MessageAction action) {
+    final color = action == _MessageAction.delete
+        ? AppTheme.error
+        : AppTheme.text;
+    return Row(
+      children: [
+        Icon(_actionIcon(action), size: 16, color: color),
+        const SizedBox(width: 10),
+        Text(
+          _actionLabel(action),
+          style: TextStyle(fontSize: 12, color: color),
+        ),
+      ],
+    );
+  }
+
+  IconData _actionIcon(_MessageAction action) {
+    return switch (action) {
+      _MessageAction.copy => Icons.content_copy_rounded,
+      _MessageAction.reply => Icons.reply_rounded,
+      _MessageAction.share => Icons.share_rounded,
+      _MessageAction.delete => Icons.delete_outline_rounded,
+    };
+  }
+
+  String _actionLabel(_MessageAction action) {
+    return switch (action) {
+      _MessageAction.copy => '复制文字',
+      _MessageAction.reply => '引用回复',
+      _MessageAction.share => '分享到群',
+      _MessageAction.delete => '删除本地显示',
+    };
+  }
+
   Widget _text(BuildContext context) {
+    final quote = RegExp(r'^> ([^\n]+)\n\n').firstMatch(message.text);
+    if (quote == null) return _richText(message.text);
+    final rest = message.text.substring(quote.end);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(8, 3, 8, 3),
+          decoration: const BoxDecoration(
+            border: Border(left: BorderSide(color: AppTheme.accent, width: 2)),
+          ),
+          child: Text(
+            quote.group(1)!,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+          ),
+        ),
+        if (rest.isNotEmpty) const SizedBox(height: 6),
+        if (rest.isNotEmpty) _richText(rest),
+      ],
+    );
+  }
+
+  Widget _richText(String text) {
     final spans = <InlineSpan>[];
     var index = 0;
-    for (final match in _linkPattern.allMatches(message.text)) {
+    for (final match in _linkPattern.allMatches(text)) {
       if (match.start > index) {
-        spans.add(TextSpan(text: message.text.substring(index, match.start)));
+        spans.add(TextSpan(text: text.substring(index, match.start)));
       }
       final link = match.group(0)!;
       spans.add(
@@ -213,8 +359,8 @@ class MessageBubble extends StatelessWidget {
       );
       index = match.end;
     }
-    if (index < message.text.length) {
-      spans.add(TextSpan(text: message.text.substring(index)));
+    if (index < text.length) {
+      spans.add(TextSpan(text: text.substring(index)));
     }
     return Text.rich(
       TextSpan(

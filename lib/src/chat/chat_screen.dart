@@ -63,6 +63,8 @@ class ChatScreenState extends State<ChatScreen> {
 
   List<Message> _messages = const [];
   String? _highlightedMessageId;
+  Message? _replyTo;
+  final Set<String> _hiddenMessageIds = {};
 
   /// 待发送附件：先显示本地预览，上传在后台跑，点发送时若还没传完就等它。
   final List<PendingAttachment> _pending = [];
@@ -150,10 +152,17 @@ class ChatScreenState extends State<ChatScreen> {
   Future<void> _load() async {
     try {
       final conversation = await widget.api.conversation(widget.conversationId);
+      final prefs = await SharedPreferences.getInstance();
+      final hidden = prefs.getStringList(_hiddenKey) ?? const [];
       if (!mounted) return;
       setState(() {
-        _messages = conversation.messages;
-        _lastSeq = _messages.fold(
+        _hiddenMessageIds
+          ..clear()
+          ..addAll(hidden);
+        _messages = conversation.messages
+            .where((message) => !_hiddenMessageIds.contains(message.id))
+            .toList();
+        _lastSeq = conversation.messages.fold(
           0,
           (max, item) => item.seq > max ? item.seq : max,
         );
@@ -193,6 +202,7 @@ class ChatScreenState extends State<ChatScreen> {
 
   /// 合并一条消息（去重、按 seq 保序、推进游标）。
   void _merge(Message message) {
+    if (_hiddenMessageIds.contains(message.id)) return;
     if (_messages.any((item) => item.id == message.id)) return;
     // 自己发的消息经由 SSE 回来时，把本地「发送中」那条移除，避免出现两条。
     final echoed = message.clientMessageId;
@@ -526,7 +536,16 @@ class ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _send() async {
-    final text = _input.text.trim();
+    var text = _input.text.trim();
+    final reply = _replyTo;
+    if (reply != null) {
+      final body = reply.text.trim().replaceAll(RegExp(r'\s+'), ' ');
+      final quote = body.isEmpty
+          ? '${reply.attachments.length} 个附件'
+          : (body.length > 80 ? '${body.substring(0, 80)}…' : body);
+      final author = reply.isMine ? '我' : widget.title;
+      text = '> $author：$quote\n\n$text';
+    }
     if (text.isEmpty && _pending.isEmpty) return;
     // 还有没传完的附件就把它们等完，最多再等 30 秒。
     if (_uploadJobs.isNotEmpty) {
@@ -547,6 +566,7 @@ class ChatScreenState extends State<ChatScreen> {
     );
     _input.clear();
     setState(() {
+      _replyTo = null;
       _pending.clear();
       _outbox.add(item);
     });
@@ -563,6 +583,7 @@ class ChatScreenState extends State<ChatScreen> {
   // ---------------------------------------------------------------- 未 ack 队列
 
   String get _outboxKey => 'chat.outbox.${widget.conversationId}';
+  String get _hiddenKey => 'chat.hidden.${widget.conversationId}';
 
   String _newClientId() {
     final now = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
@@ -909,6 +930,92 @@ class ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _startReply(Message message) {
+    setState(() => _replyTo = message);
+    _inputFocus.requestFocus();
+  }
+
+  Future<void> _hideMessage(Message message) async {
+    if (_hiddenMessageIds.contains(message.id)) return;
+    setState(() {
+      _hiddenMessageIds.add(message.id);
+      _messages = _messages.where((item) => item.id != message.id).toList();
+      if (_replyTo?.id == message.id) _replyTo = null;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_hiddenKey, _hiddenMessageIds.toList());
+  }
+
+  Future<void> _shareMessage(Message message) async {
+    try {
+      final conversations = await widget.api.conversations();
+      final targets = conversations
+          .where((item) => item.id != widget.conversationId)
+          .toList();
+      if (targets.isEmpty) {
+        _toast('没有可以分享的会话');
+        return;
+      }
+      if (!mounted) return;
+      final target = await showDialog<Conversation>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: AppTheme.panel,
+          title: const Text('分享到群'),
+          content: SizedBox(
+            width: 360,
+            height: 320,
+            child: ListView.separated(
+              itemCount: targets.length,
+              separatorBuilder: (_, __) =>
+                  const Divider(height: 1, color: AppTheme.line),
+              itemBuilder: (context, index) {
+                final item = targets[index];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    size: 18,
+                    color: AppTheme.accent,
+                  ),
+                  title: Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    item.preview,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => Navigator.of(dialogContext).pop(item),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('取消'),
+            ),
+          ],
+        ),
+      );
+      if (target == null || !mounted) return;
+      final body = message.text.trim().isEmpty
+          ? message.attachments.map((item) => item.name).join('、')
+          : message.text;
+      await widget.api.sendMessage(
+        target.id,
+        text: body,
+        attachmentIds: message.attachments.map((item) => item.id).toList(),
+      );
+      if (mounted) _toast('已分享到 ${target.title}');
+    } catch (error) {
+      if (mounted) _toast('分享失败：$error');
+    }
+  }
+
   Widget _messageList() {
     if (_error != null) {
       return Center(
@@ -932,6 +1039,9 @@ class ChatScreenState extends State<ChatScreen> {
       itemPositionsListener: _chatScroll.itemPositions,
       isDesktop: _isDesktop,
       onRetry: _retry,
+      onReply: _startReply,
+      onShare: _shareMessage,
+      onDelete: _hideMessage,
     );
   }
 
@@ -949,6 +1059,48 @@ class ChatScreenState extends State<ChatScreen> {
               item: item,
               onRemove: () => setState(() => _pending.remove(item)),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _replyBanner() {
+    final reply = _replyTo!;
+    final body = reply.text.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final preview = body.isEmpty
+        ? '${reply.attachments.length} 个附件'
+        : (body.length > 60 ? '${body.substring(0, 60)}…' : body);
+    final author = reply.isMine ? '我' : widget.title;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(10, 7, 4, 7),
+      decoration: BoxDecoration(
+        color: AppTheme.panelAlt,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: AppTheme.line),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.reply_rounded, size: 15, color: AppTheme.accent),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              '回复 $author：$preview',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 10, color: AppTheme.muted),
+            ),
+          ),
+          IconButton(
+            tooltip: '取消引用',
+            onPressed: () => setState(() => _replyTo = null),
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(
+              Icons.close_rounded,
+              size: 15,
+              color: AppTheme.muted,
+            ),
+          ),
         ],
       ),
     );
@@ -984,6 +1136,7 @@ class ChatScreenState extends State<ChatScreen> {
                   ),
                   child: Column(
                     children: [
+                      if (_replyTo != null) _replyBanner(),
                       if (_pending.isNotEmpty) _pendingStrip(),
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxHeight: 120),

@@ -7,7 +7,9 @@ void main() {
     final info = UpdateInfo(
       tag: 'latest-build',
       name: '最新构建',
-      body: '最新版本：v1.2.2\n\n<!-- build:122 -->\n\n### 本版更新内容',
+      body:
+          '最新版本：v1.2.2\n\n### 本版更新内容\n\n### 下载\n\n'
+          '<!-- build:122 构建 #122 -->',
       publishedAt: DateTime(2026, 11, 14),
     );
 

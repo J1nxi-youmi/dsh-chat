@@ -80,6 +80,7 @@ class ChatScreenState extends State<ChatScreen> {
   bool _recording = false;
   DateTime? _recordStarted;
   Timer? _ticker;
+  Timer? _bottomSettleTimer;
   Duration _recorded = Duration.zero;
   String? _error;
 
@@ -109,6 +110,7 @@ class ChatScreenState extends State<ChatScreen> {
     _input.removeListener(_onInputChanged);
     _events?.cancel();
     _ticker?.cancel();
+    _bottomSettleTimer?.cancel();
     _recorder.dispose();
     _input.dispose();
     _inputFocus.dispose();
@@ -175,7 +177,7 @@ class ChatScreenState extends State<ChatScreen> {
         _unreadBelow = 0;
         _atBottom = true;
       });
-      _jumpToBottom();
+      _scrollToBottom();
       unawaited(_syncSince());
       unawaited(_flushOutbox());
     } catch (error) {
@@ -238,19 +240,17 @@ class ChatScreenState extends State<ChatScreen> {
     if (!_atBottom) setState(() => _unreadBelow += 1);
   }
 
-  void _jumpToBottom() {
+  /// 只有主动发送才传 settle；键盘和收消息都不会调用这里。
+  void _scrollToBottom({bool settle = false}) {
     _jumpNow();
     // 本地消息插入后还会重建一帧，帧末再强制贴一次。
     WidgetsBinding.instance.addPostFrameCallback((_) => _jumpNow());
-  }
-
-  /// 发送动作专用：先贴底，等列表完成一次重排后再校一次。
-  /// 收到消息不会调用这里，避免浏览时被拽走。
-  void _settleAfterSend() {
-    _jumpToBottom();
-    Future<void>.delayed(const Duration(milliseconds: 350), () {
-      if (mounted && _atBottom) _jumpToBottom();
-    });
+    if (settle) {
+      _bottomSettleTimer?.cancel();
+      _bottomSettleTimer = Timer(const Duration(milliseconds: 350), () {
+        if (mounted && _atBottom) _jumpNow();
+      });
+    }
   }
 
   void _jumpNow() {
@@ -597,12 +597,12 @@ class ChatScreenState extends State<ChatScreen> {
       _outbox.add(item);
     });
     // 本地消息先出现，此时立刻贴底；接口返回后再校一次。
-    _jumpToBottom();
+    _scrollToBottom();
     await _saveOutbox();
     await _deliver(item);
     if (mounted) {
       setState(() {});
-      _settleAfterSend();
+      _scrollToBottom(settle: true);
     }
   }
 
@@ -704,11 +704,11 @@ class ChatScreenState extends State<ChatScreen> {
   Future<void> _retry(Outgoing item) async {
     item.status = 'sending';
     if (mounted) setState(() {});
-    _jumpToBottom();
+    _scrollToBottom();
     await _deliver(item);
     if (mounted) {
       setState(() {});
-      _settleAfterSend();
+      _scrollToBottom(settle: true);
     }
   }
 
@@ -928,7 +928,7 @@ class ChatScreenState extends State<ChatScreen> {
       shape: const StadiumBorder(side: BorderSide(color: AppTheme.line)),
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
-        onTap: () => _jumpToBottom(),
+        onTap: () => _scrollToBottom(),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
           child: Row(
@@ -1466,12 +1466,12 @@ class ChatScreenState extends State<ChatScreen> {
       at: DateTime.now(),
     );
     if (mounted) setState(() => _outbox.add(item));
-    _jumpToBottom();
+    _scrollToBottom();
     await _saveOutbox();
     await _deliver(item);
     if (mounted) {
       setState(() {});
-      _settleAfterSend();
+      _scrollToBottom(settle: true);
     }
   }
 

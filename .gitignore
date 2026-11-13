@@ -17,6 +17,9 @@ analyze.log
 build.log
 windows.log
 
+# 本地设计稿（含预览 HTML / 渲染脚本，不进构建）
+/design/
+
 # 编辑器
 .idea/
 .vscode/

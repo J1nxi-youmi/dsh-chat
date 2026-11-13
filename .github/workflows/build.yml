@@ -55,7 +55,7 @@ jobs:
         run: dart run flutter_launcher_icons
 
       - name: Analyze
-        run: flutter analyze > analyze.log 2>&1 || true
+        run: flutter analyze --fatal-infos > analyze.log 2>&1
 
       - name: Build APK
         run: |
@@ -189,7 +189,6 @@ jobs:
           VERSION=$(bash tool/version.sh "${{ github.run_number }}")
           {
             echo "最新版本：v${VERSION}"
-            echo "<!-- build:${{ github.run_number }} -->"
             echo
             echo "### 本版更新内容"
             echo
@@ -218,6 +217,8 @@ jobs:
             echo '```'
             echo
             echo "每个版本的改动见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)。"
+            echo
+            echo "<!-- build:${{ github.run_number }} 构建 #${{ github.run_number }} -->"
           } > NOTES.md
           cat NOTES.md
 

@@ -31,7 +31,7 @@ class UpdateInfo {
 
   /// 构建号只藏在 release 正文的 HTML 注释里，不显示给用户。
   int get buildNumber {
-    final match = RegExp(r'<!--\s*build:(\d+)\s*-->').firstMatch(body);
+    final match = RegExp(r'<!--[^>]*\bbuild:(\d+)[^>]*-->').firstMatch(body);
     return int.tryParse(match?.group(1) ?? '') ?? 0;
   }
 

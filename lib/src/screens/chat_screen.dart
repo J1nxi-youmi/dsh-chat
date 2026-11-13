@@ -48,7 +48,10 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _input = TextEditingController();
   final _inputFocus = FocusNode();
   final _itemScroll = ItemScrollController();
+  final _itemPositions = ItemPositionsListener.create();
   final _recorder = AudioRecorder();
+  bool _atBottom = true;
+  int _unreadBelow = 0;
 
   bool get _isDesktop =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
@@ -87,6 +90,7 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     activeConversationId.value = widget.conversationId;
     _connected = widget.api.connected.value;
     widget.api.connected.addListener(_onConnection);
+    _itemPositions.itemPositions.addListener(_onItemPositionsChanged);
     _input.addListener(_onInputChanged);
     // 全局监听 Ctrl/Cmd+V：文本框自己也会处理文字粘贴，这里只额外抓图片/文件。
     HardwareKeyboard.instance.addHandler(_onGlobalKey);
@@ -103,6 +107,7 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       activeConversationId.value = null;
     }
     widget.api.connected.removeListener(_onConnection);
+    _itemPositions.itemPositions.removeListener(_onItemPositionsChanged);
     _input.removeListener(_onInputChanged);
     _events?.cancel();
     _ticker?.cancel();
@@ -126,9 +131,9 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeMetrics() {
-    // 键盘弹出/收起时可视高度变化，滚到底避免最新消息被输入框挡住。
+    // 键盘弹出/收起时可视高度变化；只在当前本来就贴底时跟随。
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _jumpToBottom();
+      if (mounted && _atBottom) _jumpToBottom();
     });
   }
 
@@ -148,6 +153,24 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
+  void _onItemPositionsChanged() {
+    if (!mounted) return;
+    final contentCount = _messages.length + _outbox.length + (_sending ? 1 : 0);
+    final atBottom =
+        contentCount == 0 ||
+        _itemPositions.itemPositions.value.any(
+          (position) => position.index == contentCount,
+        );
+    if (atBottom == _atBottom) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || atBottom == _atBottom) return;
+      setState(() {
+        _atBottom = atBottom;
+        if (atBottom) _unreadBelow = 0;
+      });
+    });
+  }
+
   Future<void> _load() async {
     try {
       final conversation = await widget.api.conversation(widget.conversationId);
@@ -159,6 +182,8 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           (max, item) => item.seq > max ? item.seq : max,
         );
         _error = null;
+        _unreadBelow = 0;
+        _atBottom = true;
       });
       _jumpToBottom();
       unawaited(_syncSince());
@@ -177,12 +202,19 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         _lastSeq,
       );
       if (!mounted || fresh.isEmpty) return;
+      final before = _messages.length;
       setState(() {
         for (final message in fresh) {
           _merge(message);
         }
       });
-      _jumpToBottom();
+      final added = _messages.length - before;
+      if (added <= 0) return;
+      if (_atBottom) {
+        _jumpToBottom();
+      } else {
+        setState(() => _unreadBelow += added);
+      }
     } catch (_) {
       /* 下次重连再补 */
     }
@@ -214,8 +246,14 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       unawaited(_syncSince());
       return;
     }
+    final before = _messages.length;
     setState(() => _merge(message));
-    _jumpToBottom();
+    if (_messages.length <= before) return;
+    if (_atBottom) {
+      _jumpToBottom();
+    } else {
+      setState(() => _unreadBelow += 1);
+    }
   }
 
   void _jumpToBottom({int attempt = 0}) {
@@ -228,6 +266,12 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       final contentCount =
           _messages.length + _outbox.length + (_sending ? 1 : 0);
       if (contentCount == 0) return;
+      if (_unreadBelow != 0 || !_atBottom) {
+        setState(() {
+          _unreadBelow = 0;
+          _atBottom = true;
+        });
+      }
       // 列表末尾有一个 1px 锚点；alignment: 1 把锚点顶部贴住底部，
       // 等价于滚到 maxScrollExtent。
       unawaited(
@@ -718,7 +762,15 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final inner = Column(
       children: [
         if (!_connected) _connectionBanner(),
-        Expanded(child: _messageList()),
+        Expanded(
+          child: Stack(
+            children: [
+              Positioned.fill(child: _messageList()),
+              if (_unreadBelow > 0)
+                Positioned(right: 20, bottom: 12, child: _newMessagesButton()),
+            ],
+          ),
+        ),
         _composer(),
       ],
     );
@@ -880,6 +932,41 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
+  Widget _newMessagesButton() {
+    return Material(
+      color: AppTheme.panel,
+      elevation: 3,
+      shadowColor: const Color(0xFF25322E).withValues(alpha: 0.2),
+      shape: const StadiumBorder(side: BorderSide(color: AppTheme.line)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => _jumpToBottom(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color: AppTheme.accent,
+              ),
+              const SizedBox(width: 3),
+              Text(
+                '$_unreadBelow 条新消息',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.accent,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _messageList() {
     if (_error != null) {
       return Center(
@@ -901,6 +988,7 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ),
         child: ScrollablePositionedList.builder(
           itemScrollController: _itemScroll,
+          itemPositionsListener: _itemPositions,
           padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
           itemCount:
               _messages.length +

@@ -90,7 +90,13 @@ class ChatMessageList extends StatelessWidget {
       ),
     );
     // 桌面端允许鼠标左键拖选气泡内文字，Ctrl+C 直接复制。
-    return isDesktop ? SelectionArea(child: list) : list;
+    // 右键菜单关掉原生 Select all，统一由 MessageBubble 的自定义菜单处理。
+    return isDesktop
+        ? SelectionArea(
+            contextMenuBuilder: (_, __) => const SizedBox.shrink(),
+            child: list,
+          )
+        : list;
   }
 
   bool _needsDivider(int index) {

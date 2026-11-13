@@ -422,7 +422,7 @@ class MessageBubble extends StatelessWidget {
     const itemWidth = 42.0;
     const barHeight = 44.0;
     const arrowHeight = 5.0;
-    const gap = 8.0;
+    const gap = 14.0;
     final width = entries.length * itemWidth + 12;
     const totalHeight = barHeight + arrowHeight;
     final left = (bubbleCenterX - width / 2).clamp(8.0, size.width - width - 8);

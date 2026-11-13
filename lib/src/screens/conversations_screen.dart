@@ -200,32 +200,37 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: SizedBox(
-                height: 40,
+                height: 38,
                 child: TextField(
                   controller: _search,
                   onChanged: (value) => setState(() => _query = value),
-                  style: const TextStyle(fontSize: 12),
+                  style: const TextStyle(fontSize: 11.5),
+                  textAlignVertical: TextAlignVertical.center,
                   decoration: InputDecoration(
                     hintText: '搜索会话',
                     isDense: true,
                     prefixIcon: const Icon(
                       Icons.search_rounded,
-                      size: 17,
+                      size: 16,
                       color: AppTheme.muted,
                     ),
                     prefixIconConstraints: const BoxConstraints(
-                      minWidth: 40,
+                      minWidth: 38,
                       minHeight: 0,
                     ),
                     filled: true,
                     fillColor: AppTheme.panelAlt,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(11),
                       borderSide: const BorderSide(color: AppTheme.line),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(11),
                       borderSide: const BorderSide(color: AppTheme.line),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(11),
+                      borderSide: const BorderSide(color: AppTheme.accent),
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   ),

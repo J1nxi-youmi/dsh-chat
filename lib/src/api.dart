@@ -233,9 +233,13 @@ class ChatApi {
 
   /// 只保存自定义表情包，昵称/头像由服务端保留原值。
   Future<void> saveStickers(List<Attachment> stickers) async {
-    await _send('POST', '/api/profile', {
+    final data = await _send('POST', '/api/profile', {
       'stickers': stickers.map((item) => item.toJson()).toList(),
     });
+    final profile = data is Map ? data['profile'] : null;
+    if (profile is! Map || profile['stickers'] is! List) {
+      throw '服务端插件太旧，请把 dsh-plugin-chat 更新到 v0.2.1 以上再添加表情包';
+    }
   }
 
   /// 量一次 /healthz 的往返延迟（毫秒）；失败返回 null。

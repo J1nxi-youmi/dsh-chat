@@ -281,7 +281,7 @@ class _VersionScreenState extends State<VersionScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Dshchat',
+                                  '青屿',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,

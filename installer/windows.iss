@@ -7,7 +7,7 @@
   #define AppVersion "0.1.0"
 #endif
 
-#define AppName "Dshchat"
+#define AppName "青屿"
 #define AppExe "dsh_chat.exe"
 
 [Setup]
@@ -17,7 +17,7 @@ AppVersion={#AppVersion}
 AppPublisher=dsh
 AppPublisherURL=https://github.com/J1nxi-youmi/dsh-chat
 DefaultDirName={autopf}\dsh-chat
-DefaultGroupName=Dshchat
+DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 OutputDir=..\dist
 OutputBaseFilename=dsh-chat-setup
@@ -41,10 +41,13 @@ Name: "quicklaunchicon"; Description: "创建快速启动栏图标"; GroupDescri
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [InstallDelete]
-; 升级安装时清掉旧版本留下的 dsh-chat 快捷方式，避免和 Dshchat 并存。
+; 升级安装时清掉旧版本留下的 dsh-chat / Dshchat 快捷方式，避免和青屿并存。
 Type: files; Name: "{autodesktop}\dsh-chat.lnk"
+Type: files; Name: "{autodesktop}\Dshchat.lnk"
 Type: files; Name: "{commonprograms}\Dshchat\dsh-chat.lnk"
 Type: files; Name: "{commonprograms}\Dshchat\卸载 dsh-chat.lnk"
+Type: files; Name: "{commonprograms}\Dshchat\Dshchat.lnk"
+Type: files; Name: "{commonprograms}\Dshchat\卸载 Dshchat.lnk"
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"

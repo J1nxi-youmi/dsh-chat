@@ -183,7 +183,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Padding(
                 padding: EdgeInsets.fromLTRB(20, 8, 20, 14),
                 child: Text(
-                  'Dshchat for Windows · v0.3.0',
+                  '青屿 for Windows · v0.3.0',
                   style: TextStyle(fontSize: 8, color: AppTheme.muted),
                 ),
               ),
@@ -291,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Dshchat',
+                          '青屿',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,

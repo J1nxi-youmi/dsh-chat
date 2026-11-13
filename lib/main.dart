@@ -25,7 +25,7 @@ Future<void> main() async {
       size: Size(980, 660),
       minimumSize: Size(780, 560),
       center: true,
-      title: 'Dshchat',
+      title: '青屿',
       titleBarStyle: TitleBarStyle.normal,
     );
     await windowManager.waitUntilReadyToShow(options, () async {
@@ -46,7 +46,7 @@ class ChatApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '聊天',
+      title: '青屿',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       home: const _Boot(),

@@ -1,11 +1,11 @@
-﻿# 给 flutter 现生成的 Windows 工程打补丁（CI 里跑）。
+# 给 flutter 现生成的 Windows 工程打补丁（CI 里跑）。
 #
 # 做四件事：
 #   1) CMakeLists 加 _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
 #      （just_audio_windows 的 C++/WinRT 在新 MSVC 下报 STL1011）；
-#   2) 窗口标题统一改成 Dshchat；
+#   2) 窗口标题统一改成「青屿」；
 #   3) 应用图标换成仓库里的 tool/app_icon.ico；
-#   4) 标题栏开暗色（DWMWA_USE_IMMERSIVE_DARK_MODE），跟 App 主题一致。
+#   4) 标题栏使用浅色（DWMWA_USE_IMMERSIVE_DARK_MODE = FALSE），跟青屿主题一致。
 $ErrorActionPreference = 'Stop'
 
 $define = '_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS'
@@ -31,10 +31,10 @@ if ($text.Contains($define)) {
 # ---------- 2) 窗口标题 ----------
 if (Test-Path -LiteralPath $mainCpp) {
     $mt = [System.IO.File]::ReadAllText($mainCpp)
-    $patched = [regex]::Replace($mt, '(Create\(L")[^"]+(")', '$1Dshchat$2')
+    $patched = [regex]::Replace($mt, '(Create\(L")[^"]+(")', '$1\u9752\u5c7f$2')
     if ($patched -ne $mt) {
         [System.IO.File]::WriteAllText($mainCpp, $patched, (New-Object System.Text.UTF8Encoding($false)))
-        Write-Host "窗口标题已改为 Dshchat"
+        Write-Host "窗口标题已改为 青屿"
     }
 }
 
@@ -56,12 +56,12 @@ if (Test-Path -LiteralPath $mainCpp) {
     }
     # 幂等：双保险已存在就跳过，避免重复累积。
     if (-not $mt.Contains('DwmSetWindowAttribute(hwnd, 20,')) {
-        $dark = "`n  HWND hwnd = window.GetHandle();`n  BOOL darkTitle = TRUE;`n  DwmSetWindowAttribute(hwnd, 20, &darkTitle, sizeof(darkTitle));`n  DwmSetWindowAttribute(hwnd, 19, &darkTitle, sizeof(darkTitle));"
-        $mt = $mt.Replace('if (!window.Create(L"Dshchat", origin, size)) {', "if (!window.Create(L`"Dshchat`", origin, size)) {" + $dark)
+        $dark = "`n  HWND hwnd = window.GetHandle();`n  BOOL darkTitle = FALSE;`n  DwmSetWindowAttribute(hwnd, 20, &darkTitle, sizeof(darkTitle));`n  DwmSetWindowAttribute(hwnd, 19, &darkTitle, sizeof(darkTitle));"
+        $mt = $mt.Replace('if (!window.Create(L"\u9752\u5c7f", origin, size)) {', "if (!window.Create(L`"\u9752\u5c7f`", origin, size)) {" + $dark)
         [System.IO.File]::WriteAllText($mainCpp, $mt, (New-Object System.Text.UTF8Encoding($false)))
-        Write-Host "标题栏暗色已写入（20/19 双保险）"
+        Write-Host "浅色标题栏已写入（20/19 双保险）"
     } else {
-        Write-Host "标题栏暗色已存在，跳过"
+        Write-Host "标题栏设置已存在，跳过"
     }
     if ($changed) {
         [System.IO.File]::WriteAllText($mainCpp, $mt, (New-Object System.Text.UTF8Encoding($false)))

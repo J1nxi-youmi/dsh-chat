@@ -432,7 +432,7 @@ class _DesktopHomeState extends State<DesktopHome> {
                 ),
                 const Spacer(),
                 const Text(
-                  'Dshchat',
+                  '青屿',
                   style: TextStyle(fontSize: 11, color: AppTheme.muted),
                 ),
               ],

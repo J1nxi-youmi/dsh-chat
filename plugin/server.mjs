@@ -539,6 +539,7 @@ async function handleApi(req, res, url) {
         profile: {
           nickname: typeof saved.nickname === 'string' ? saved.nickname : '',
           avatarUrl: typeof saved.avatarUrl === 'string' ? saved.avatarUrl : '',
+          stickers: Array.isArray(saved.stickers) ? saved.stickers : [],
         },
       });
     }
@@ -552,6 +553,21 @@ async function handleApi(req, res, url) {
       }
       if (typeof body.nickname === 'string') saved.nickname = body.nickname.slice(0, 60);
       if (typeof body.avatarUrl === 'string') saved.avatarUrl = body.avatarUrl.slice(0, 500);
+      // 自定义表情包：存附件元数据（服务端已有文件），双端通过 profile 事件自动同步。
+      if (Array.isArray(body.stickers)) {
+        saved.stickers = body.stickers.slice(0, 100).flatMap((item) => {
+          if (!item || typeof item !== 'object' || typeof item.url !== 'string') return [];
+          return [{
+            id: String(item.id || ''),
+            kind: 'image',
+            name: String(item.name || '表情').slice(0, 120),
+            mime: String(item.mime || 'image/png').slice(0, 120),
+            size: Number(item.size) || 0,
+            duration: 0,
+            url: item.url.slice(0, 500),
+          }];
+        });
+      }
       await mkdir(dirname(profileFile), { recursive: true });
       await writeFile(profileFile, JSON.stringify(saved, null, 2));
       // 广播给所有在线设备：资料变了，各端自动重新拉取。

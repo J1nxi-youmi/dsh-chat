@@ -15,6 +15,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../image_utils.dart';
 import '../models.dart';
+import '../profile.dart';
 import '../theme.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_search_dialog.dart';
@@ -1265,6 +1266,61 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _inputFocus.requestFocus();
   }
 
+  Future<void> _addStickers() async {
+    try {
+      final files = await FilePicker.pickFiles(type: FileType.image);
+      if (files.isEmpty) return;
+      _toast('正在添加表情包…');
+      final next = [...AppProfile.instance.stickers];
+      for (final file in files) {
+        var bytes = await file.readAsBytes();
+        var mime = _guessMime(file.name);
+        if (mime.startsWith('image/')) {
+          final fixed = await normalizeImageBytes(bytes, mime);
+          if (!identical(fixed, bytes)) {
+            bytes = fixed;
+            mime = 'image/png';
+          }
+        }
+        final attachment = await widget.api.upload(
+          name: file.name,
+          mime: mime,
+          bytes: bytes,
+          kind: 'image',
+        );
+        if (!next.any((item) => item.id == attachment.id)) {
+          next.add(attachment);
+        }
+      }
+      if (next.length == AppProfile.instance.stickers.length) {
+        _toast('没有新的表情包');
+        return;
+      }
+      // 先确保云端成功，另一端才能自动收到；再落本机并通知界面。
+      await widget.api.saveStickers(next);
+      await AppProfile.instance.saveStickers(next);
+      if (mounted) _toast('已添加表情包，另一台设备会自动同步');
+    } catch (error) {
+      _toast('添加表情失败：$error');
+    }
+  }
+
+  Future<void> _sendSticker(Attachment sticker) async {
+    final item = Outgoing(
+      clientMessageId: _newClientId(),
+      text: '',
+      attachments: [sticker],
+      at: DateTime.now(),
+    );
+    if (mounted) setState(() => _outbox.add(item));
+    await _saveOutbox();
+    await _deliver(item);
+    if (mounted) {
+      setState(() {});
+      _jumpToBottom();
+    }
+  }
+
   Future<void> _showEmojiPicker() async {
     // 面板高度随窗口收缩，但内部保留滚动，避免小窗口截断最后一行。
     final panelHeight = (MediaQuery.sizeOf(context).height * 0.58)
@@ -1314,9 +1370,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   ),
                   const SizedBox(height: 6),
                   Expanded(
-                    child: _emojiGrid(
+                    child: _emojiPanelContent(
+                      dialogContext,
                       (value) => Navigator.of(dialogContext).pop(value),
-                      scrollable: true,
                     ),
                   ),
                 ],
@@ -1354,9 +1410,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       ),
                       const SizedBox(height: 12),
                       Expanded(
-                        child: _emojiGrid(
+                        child: _emojiPanelContent(
+                          sheetContext,
                           (value) => Navigator.of(sheetContext).pop(value),
-                          scrollable: true,
                         ),
                       ),
                     ],
@@ -1371,13 +1427,80 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     if (emoji != null) _insertEmoji(emoji);
   }
 
-  Widget _emojiGrid(void Function(String) onPick, {bool scrollable = false}) {
+  Widget _emojiPanelContent(
+    BuildContext panelContext,
+    void Function(String) onEmoji,
+  ) {
+    return AnimatedBuilder(
+      animation: AppProfile.instance,
+      builder: (context, _) {
+        final stickers = AppProfile.instance.stickers;
+        return ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            _emojiGrid(onEmoji),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Text(
+                  '我的表情包',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.text,
+                  ),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _addStickers,
+                  icon: const Icon(Icons.add_rounded, size: 15),
+                  label: const Text('添加表情包', style: TextStyle(fontSize: 9)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.accent,
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                ),
+              ],
+            ),
+            if (stickers.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.panelAlt,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.line),
+                ),
+                child: const Text(
+                  '还没有自定义表情包，添加后会自动同步到另一台设备。',
+                  style: TextStyle(fontSize: 9, color: AppTheme.muted),
+                ),
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final sticker in stickers)
+                    _stickerTile(panelContext, sticker),
+                ],
+              ),
+            const SizedBox(height: 8),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _emojiGrid(void Function(String) onPick) {
     return GridView.count(
       crossAxisCount: 8,
-      shrinkWrap: !scrollable,
-      physics: scrollable
-          ? const ClampingScrollPhysics()
-          : const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 6,
       crossAxisSpacing: 6,
       childAspectRatio: 1,
@@ -1395,6 +1518,37 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _stickerTile(BuildContext panelContext, Attachment sticker) {
+    return Material(
+      color: AppTheme.panelAlt,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.of(panelContext).pop();
+          unawaited(_sendSticker(sticker));
+        },
+        child: Container(
+          width: 52,
+          height: 52,
+          padding: const EdgeInsets.all(4),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              widget.api.mediaUrl(sticker.url),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.broken_image_outlined,
+                size: 20,
+                color: AppTheme.muted,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

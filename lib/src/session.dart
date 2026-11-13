@@ -20,17 +20,24 @@ class Session {
     next.startEvents();
     unawaited(next.refreshLimits());
     unawaited(next.refreshProfile());
-    next.events.listen(_onMessage);
+    next.events.listen(_onEvent);
   }
 
-  static void _onMessage(Map<String, dynamic> event) {
+  static void _onEvent(Map<String, dynamic> event) {
+    // 另一台设备改了资料/表情包：重新拉取，界面靠 AppProfile 通知刷新。
+    if (event['type'] == 'profile') {
+      final current = api;
+      if (current != null) unawaited(current.refreshProfile());
+      return;
+    }
     if (event['type'] != 'message') return;
     final raw = event['message'];
     if (raw is! Map<String, dynamic>) return;
     // 只提醒「她说的」，自己发的不用提醒。
     if (raw['role'] != 'assistant') return;
     final conversationId = event['conversationId']?.toString() ?? '';
-    final resumed = WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    final resumed =
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     // 正在看这个会话、App 也在前台，就不打扰。
     if (resumed && activeConversationId.value == conversationId) return;
     final text = (raw['text']?.toString() ?? '').trim();

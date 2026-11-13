@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'models.dart';
 
 /// 「我的资料」：昵称 + 头像。
 /// 本地选的图存 avatarPath；云端的昵称/头像存 remoteNickname/remoteUrl，
@@ -16,16 +19,19 @@ class AppProfile extends ChangeNotifier {
   static const _keyAvatar = 'profile.avatar';
   static const _keyRemoteNickname = 'profile.remoteNickname';
   static const _keyRemoteUrl = 'profile.remoteUrl';
+  static const _keyStickers = 'profile.stickers';
 
   String _nickname = '';
   String? _avatarPath;
   String _remoteNickname = '';
   String? _remoteUrl;
+  List<Attachment> _stickers = const [];
   bool _loaded = false;
 
   String get nickname => _nickname;
   String? get avatarPath => _avatarPath;
   String? get remoteUrl => _remoteUrl;
+  List<Attachment> get stickers => List.unmodifiable(_stickers);
 
   /// 显示名：优先本地昵称，没填就用云端，再没有就是「我」。
   String get displayName {
@@ -53,6 +59,27 @@ class AppProfile extends ChangeNotifier {
     _avatarPath = prefs.getString(_keyAvatar);
     _remoteNickname = prefs.getString(_keyRemoteNickname) ?? '';
     _remoteUrl = prefs.getString(_keyRemoteUrl);
+    final rawStickers = prefs.getString(_keyStickers);
+    if (rawStickers != null) {
+      try {
+        _stickers = (jsonDecode(rawStickers) as List)
+            .whereType<Map<String, dynamic>>()
+            .map(Attachment.fromJson)
+            .toList();
+      } catch (_) {
+        _stickers = const [];
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> saveStickers(List<Attachment> stickers) async {
+    _stickers = List.unmodifiable(stickers);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _keyStickers,
+      jsonEncode(_stickers.map((item) => item.toJson()).toList()),
+    );
     notifyListeners();
   }
 
@@ -92,7 +119,11 @@ class AppProfile extends ChangeNotifier {
   }
 
   /// 云端拉回来的资料（连接/收到 profile 事件时调用）。云端是权威：直接覆盖本地。
-  Future<void> applyRemote({required String nickname, required String avatarUrl}) async {
+  Future<void> applyRemote({
+    required String nickname,
+    required String avatarUrl,
+    List<Attachment>? stickers,
+  }) async {
     _remoteNickname = nickname;
     if (nickname.trim().isNotEmpty) {
       _nickname = nickname.trim();
@@ -106,6 +137,13 @@ class AppProfile extends ChangeNotifier {
       await prefs.remove(_keyRemoteUrl);
     } else {
       await prefs.setString(_keyRemoteUrl, _remoteUrl!);
+    }
+    if (stickers != null) {
+      _stickers = List.unmodifiable(stickers);
+      await prefs.setString(
+        _keyStickers,
+        jsonEncode(_stickers.map((item) => item.toJson()).toList()),
+      );
     }
     notifyListeners();
   }

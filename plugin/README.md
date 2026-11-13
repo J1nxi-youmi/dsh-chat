@@ -7,7 +7,7 @@
 ## 主要能力
 
 - **可靠投递**：消息带 `seq`，发送带 `clientMessageId` 幂等；断线用 `?since=` 增量补拉，SSE 实时推送
-- **我的资料云同步**：`GET/POST /api/profile` 存昵称 + 头像，所有设备连上自动一致
+- **我的资料云同步**：`GET/POST /api/profile` 存昵称 + 头像 + 自定义表情包，所有设备连上自动一致；资料变化会广播 `profile` 事件让另一端即时刷新
 - **GitHub 下载代理**：`GET /api/proxy?t=<token>&url=<github 链接>`（只放行 GitHub 系域名），App 内更新直连超时自动走这条隧道兜底
 - **上传上限可调**：默认 96MB，`config.json` 的 `maxUploadBytes` 或网页设置页改；`/healthz` 会把上限告诉 App
 - **网页设置页**：左下角 ⚙，系统提示词 / 抓链接 / 气泡 / 上传上限，改完即时生效

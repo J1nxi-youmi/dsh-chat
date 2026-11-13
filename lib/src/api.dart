@@ -46,9 +46,7 @@ class ChatApi {
       ..idleTimeout = const Duration(minutes: 2);
   }
 
-  Map<String, String> get _headers => {
-        'authorization': 'Bearer $token',
-      };
+  Map<String, String> get _headers => {'authorization': 'Bearer $token'};
 
   Uri _uri(String path) => Uri.parse('$baseUrl$path');
 
@@ -59,7 +57,9 @@ class ChatApi {
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(body));
     }
-    final response = await request.close().timeout(const Duration(seconds: 120));
+    final response = await request.close().timeout(
+      const Duration(seconds: 120),
+    );
     final text = await response.transform(utf8.decoder).join();
     if (response.statusCode == 401) {
       throw ApiError('令牌不对，或者这台 DSH 换了令牌', 401);
@@ -71,13 +71,19 @@ class ChatApi {
       final lower = text.toLowerCase();
       // Cloudflare 的 1033 = 隧道没开 / 主机名没接上，不是服务端坏了。
       if (lower.contains('error code: 1033') || lower.contains('cloudflare')) {
-        throw ApiError('隧道没开，或者地址已经过期（Cloudflare 1033）。'
-            '重新启动隧道会拿到新地址，记得回来改这里。');
+        throw ApiError(
+          '隧道没开，或者地址已经过期（Cloudflare 1033）。'
+          '重新启动隧道会拿到新地址，记得回来改这里。',
+        );
       }
-      throw ApiError('服务返回的不是 JSON：${text.length > 120 ? text.substring(0, 120) : text}');
+      throw ApiError(
+        '服务返回的不是 JSON：${text.length > 120 ? text.substring(0, 120) : text}',
+      );
     }
     if (response.statusCode >= 400 || (data is Map && data['ok'] == false)) {
-      final message = data is Map ? (data['error']?.toString() ?? '请求失败') : '请求失败';
+      final message = data is Map
+          ? (data['error']?.toString() ?? '请求失败')
+          : '请求失败';
       throw ApiError(message, response.statusCode);
     }
     return data;
@@ -86,7 +92,9 @@ class ChatApi {
   Future<List<Conversation>> conversations() async {
     final data = await _send('GET', '/api/conversations');
     final list = (data['conversations'] as List?) ?? const [];
-    return list.map((item) => Conversation.fromJson(item as Map<String, dynamic>)).toList();
+    return list
+        .map((item) => Conversation.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Conversation> createConversation() async {
@@ -99,7 +107,8 @@ class ChatApi {
     return Conversation.fromJson(data['conversation'] as Map<String, dynamic>);
   }
 
-  Future<void> deleteConversation(String id) => _send('DELETE', '/api/conversations/$id');
+  Future<void> deleteConversation(String id) =>
+      _send('DELETE', '/api/conversations/$id');
 
   /// 发一条消息，返回服务端落下的（用户消息 + 可能的多条回复）。
   ///
@@ -111,11 +120,15 @@ class ChatApi {
     List<String> attachmentIds = const [],
     String? clientMessageId,
   }) async {
-    final data = await _send('POST', '/api/conversations/$conversationId/messages', {
-      'text': text,
-      'attachments': attachmentIds.map((id) => {'id': id}).toList(),
-      if (clientMessageId != null) 'clientMessageId': clientMessageId,
-    });
+    final data = await _send(
+      'POST',
+      '/api/conversations/$conversationId/messages',
+      {
+        'text': text,
+        'attachments': attachmentIds.map((id) => {'id': id}).toList(),
+        if (clientMessageId != null) 'clientMessageId': clientMessageId,
+      },
+    );
     final replies = (data['replies'] as List?) ?? [data['reply']];
     return SendResult(
       user: Message.fromJson(data['user'] as Map<String, dynamic>),
@@ -127,7 +140,11 @@ class ChatApi {
   }
 
   /// 增量拉取：只要 seq 大于 [since] 的消息（断线重连用）。
-  Future<List<Message>> messagesSince(String conversationId, int since, {int limit = 200}) async {
+  Future<List<Message>> messagesSince(
+    String conversationId,
+    int since, {
+    int limit = 200,
+  }) async {
     final data = await _send(
       'GET',
       '/api/conversations/$conversationId/messages?since=$since&limit=$limit',
@@ -170,7 +187,9 @@ class ChatApi {
   Future<void> refreshLimits() async {
     try {
       final data = await _send('GET', '/healthz');
-      final limit = data is Map ? (data['maxUploadBytes'] as num?)?.toInt() : null;
+      final limit = data is Map
+          ? (data['maxUploadBytes'] as num?)?.toInt()
+          : null;
       if (limit != null && limit > 0) maxUploadBytes = limit;
     } catch (_) {
       /* 拿不到就按默认 96MB */
@@ -184,9 +203,17 @@ class ChatApi {
       final profile = data is Map ? data['profile'] : null;
       if (profile is! Map) return;
       final url = (profile['avatarUrl'] ?? '').toString();
+      final rawStickers = profile['stickers'];
+      final stickers = rawStickers is List
+          ? rawStickers
+                .whereType<Map<String, dynamic>>()
+                .map(Attachment.fromJson)
+                .toList()
+          : null;
       await AppProfile.instance.applyRemote(
         nickname: (profile['nickname'] ?? '').toString(),
         avatarUrl: url.isEmpty ? '' : mediaUrl(url),
+        stickers: stickers,
       );
     } catch (_) {
       /* 老版本插件没有这个接口，忽略 */
@@ -194,10 +221,20 @@ class ChatApi {
   }
 
   /// 把本机资料推到云端，其它设备连上后自动同步。
-  Future<void> saveProfile({required String nickname, required String avatarUrl}) async {
+  Future<void> saveProfile({
+    required String nickname,
+    required String avatarUrl,
+  }) async {
     await _send('POST', '/api/profile', {
       'nickname': nickname,
       'avatarUrl': avatarUrl,
+    });
+  }
+
+  /// 只保存自定义表情包，昵称/头像由服务端保留原值。
+  Future<void> saveStickers(List<Attachment> stickers) async {
+    await _send('POST', '/api/profile', {
+      'stickers': stickers.map((item) => item.toJson()).toList(),
     });
   }
 
@@ -223,7 +260,9 @@ class ChatApi {
   Stream<Map<String, dynamic>> _listen() async* {
     while (true) {
       try {
-        final request = await _http.getUrl(_uri('/api/events?t=${Uri.encodeComponent(token)}'));
+        final request = await _http.getUrl(
+          _uri('/api/events?t=${Uri.encodeComponent(token)}'),
+        );
         request.headers.set(HttpHeaders.acceptHeader, 'text/event-stream');
         final response = await request.close();
         if (response.statusCode != 200) {

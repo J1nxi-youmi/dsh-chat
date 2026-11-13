@@ -10,7 +10,6 @@ import '../theme.dart';
 import 'chat_screen.dart';
 import 'profile_dialog.dart';
 import 'settings_screen.dart';
-import '../widgets/message_search_dialog.dart';
 
 /// 桌面端：会话列表 + 右侧聊天，青屿陪伴版的双栏布局。
 class DesktopHome extends StatefulWidget {
@@ -32,6 +31,7 @@ class DesktopHome extends StatefulWidget {
 class _DesktopHomeState extends State<DesktopHome> {
   final _search = TextEditingController();
   final _searchFocus = FocusNode();
+  final Map<String, GlobalKey<ChatScreenState>> _chatKeys = {};
   List<Conversation> _items = const [];
   String? _selectedId;
   String _query = '';
@@ -168,20 +168,11 @@ class _DesktopHomeState extends State<DesktopHome> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _openChatSearch(Conversation conversation) async {
-    try {
-      final detail = await widget.api.conversation(conversation.id);
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (_) => MessageSearchDialog(
-          messages: detail.messages,
-          assistantName: conversation.title,
-        ),
-      );
-    } catch (error) {
-      _toast('搜索失败：$error');
-    }
+  GlobalKey<ChatScreenState> _chatKey(String conversationId) {
+    return _chatKeys.putIfAbsent(
+      conversationId,
+      () => GlobalKey<ChatScreenState>(),
+    );
   }
 
   List<Conversation> get _filtered {
@@ -237,7 +228,7 @@ class _DesktopHomeState extends State<DesktopHome> {
                               _chatHeader(selected),
                               Expanded(
                                 child: ChatScreen(
-                                  key: ValueKey(selected.id),
+                                  key: _chatKey(selected.id),
                                   api: widget.api,
                                   conversationId: selected.id,
                                   title: selected.title,
@@ -653,7 +644,12 @@ class _DesktopHomeState extends State<DesktopHome> {
           ),
           IconButton(
             tooltip: '搜索聊天',
-            onPressed: () => _openChatSearch(conversation),
+            onPressed: () {
+              final state = _chatKeys[conversation.id]?.currentState;
+              if (state != null) {
+                state.openMessageSearch();
+              }
+            },
             icon: const Icon(
               Icons.search_rounded,
               size: 19,

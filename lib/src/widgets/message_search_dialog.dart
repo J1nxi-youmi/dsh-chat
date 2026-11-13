@@ -167,7 +167,7 @@ class _MessageSearchDialogState extends State<MessageSearchDialog> {
                               color: AppTheme.muted,
                             ),
                           ),
-                          onTap: () => Navigator.of(context).pop(),
+                          onTap: () => Navigator.of(context).pop(message),
                         );
                       },
                     ),

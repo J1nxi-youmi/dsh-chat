@@ -39,10 +39,10 @@ class ChatScreen extends StatefulWidget {
   final ValueChanged<String>? onTitleChanged;
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  State<ChatScreen> createState() => ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
+class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _input = TextEditingController();
   final _inputFocus = FocusNode();
   final _scroll = ScrollController();
@@ -60,6 +60,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final int _uploading = 0;
 
   List<Message> _messages = const [];
+  final Map<String, GlobalKey> _messageKeys = {};
+  String? _highlightedMessageId;
 
   /// 待发送附件：先显示本地预览，上传在后台跑，点发送时若还没传完就等它。
   final List<_PendingItem> _pending = [];
@@ -757,13 +759,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         actions: [
           IconButton(
             tooltip: '搜索聊天',
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) => MessageSearchDialog(
-                messages: _messages,
-                assistantName: widget.title,
-              ),
-            ),
+            onPressed: openMessageSearch,
             icon: const Icon(
               Icons.search_rounded,
               size: 20,
@@ -860,6 +856,36 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// 打开当前会话的消息搜索；点结果后关闭弹窗并跳到对应消息。
+  Future<void> openMessageSearch() async {
+    final target = await showDialog<Message>(
+      context: context,
+      builder: (_) =>
+          MessageSearchDialog(messages: _messages, assistantName: widget.title),
+    );
+    if (target == null || !mounted) return;
+    await _jumpToMessage(target);
+  }
+
+  Future<void> _jumpToMessage(Message target) async {
+    setState(() => _highlightedMessageId = target.id);
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    final targetContext = _messageKeys[target.id]?.currentContext;
+    if (targetContext != null && targetContext.mounted) {
+      await Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        alignment: 0.25,
+      );
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 1600));
+    if (mounted && _highlightedMessageId == target.id) {
+      setState(() => _highlightedMessageId = null);
+    }
+  }
+
   Widget _messageList() {
     if (_error != null) {
       return Center(
@@ -879,34 +905,44 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         constraints: BoxConstraints(
           maxWidth: _isDesktop ? 780 : double.infinity,
         ),
-        child: ListView.builder(
+        child: ListView(
           controller: _scroll,
           padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
-          itemCount: _messages.length + _outbox.length + (_sending ? 1 : 0),
-          itemBuilder: (context, index) {
-            if (index < _messages.length) {
-              final message = _messages[index];
-              final bubble = MessageBubble(
-                message: message,
-                mediaUrl: widget.api.mediaUrl,
-              );
-              // 跨天或隔了 5 分钟以上，插一条时间分隔。
-              return _needsDivider(index)
-                  ? Column(children: [_timeDivider(message.at), bubble])
-                  : bubble;
-            }
-            final outboxIndex = index - _messages.length;
-            if (outboxIndex < _outbox.length) {
-              final item = _outbox[outboxIndex];
-              return MessageBubble(
+          children: [
+            for (var index = 0; index < _messages.length; index++)
+              Container(
+                key: _messageKeys.putIfAbsent(
+                  _messages[index].id,
+                  () => GlobalKey(),
+                ),
+                child: _needsDivider(index)
+                    ? Column(
+                        children: [
+                          _timeDivider(_messages[index].at),
+                          MessageBubble(
+                            message: _messages[index],
+                            mediaUrl: widget.api.mediaUrl,
+                            highlighted:
+                                _highlightedMessageId == _messages[index].id,
+                          ),
+                        ],
+                      )
+                    : MessageBubble(
+                        message: _messages[index],
+                        mediaUrl: widget.api.mediaUrl,
+                        highlighted:
+                            _highlightedMessageId == _messages[index].id,
+                      ),
+              ),
+            for (final item in _outbox)
+              MessageBubble(
                 message: item.asMessage(),
                 mediaUrl: widget.api.mediaUrl,
                 status: item.status,
                 onRetry: item.status == 'failed' ? () => _retry(item) : null,
-              );
-            }
-            return const TypingRow();
-          },
+              ),
+            if (_sending) const TypingRow(),
+          ],
         ),
       ),
     );

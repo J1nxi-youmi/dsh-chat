@@ -19,6 +19,7 @@ class MessageBubble extends StatelessWidget {
     required this.mediaUrl,
     this.status,
     this.onRetry,
+    this.highlighted = false,
   });
 
   final Message message;
@@ -29,6 +30,9 @@ class MessageBubble extends StatelessWidget {
 
   /// failed 时点一下重发。
   final VoidCallback? onRetry;
+
+  /// 从搜索结果跳转过来时短暂高亮。
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -73,13 +77,20 @@ class MessageBubble extends StatelessWidget {
               decoration: BoxDecoration(
                 color: mine ? AppTheme.me : AppTheme.bubble,
                 border: Border.all(
-                  color: mine ? AppTheme.meBorder : AppTheme.bubbleBorder,
+                  color: highlighted
+                      ? AppTheme.accent
+                      : mine
+                      ? AppTheme.meBorder
+                      : AppTheme.bubbleBorder,
+                  width: highlighted ? 1.5 : 1,
                 ),
                 borderRadius: radius,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF25322E).withValues(alpha: 0.035),
-                    blurRadius: 8,
+                    color: highlighted
+                        ? AppTheme.accent.withValues(alpha: 0.18)
+                        : const Color(0xFF25322E).withValues(alpha: 0.035),
+                    blurRadius: highlighted ? 14 : 8,
                     offset: const Offset(0, 3),
                   ),
                 ],

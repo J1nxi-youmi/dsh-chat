@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# 版本号规则（每个 minor 10 个 patch）：
-#   base 0.3.0 -> 0.03.01 -> ... -> 0.03.10 -> 0.04.01 -> ...
+# 版本号规则（原有规则 + 10.10 特殊进位）：
+#   base 0.3.0 -> 0.3.01 -> ... -> 0.3.10 -> 0.4.01 -> ...
 #   ... -> 0.10.10 -> 1.01.01 -> 1.01.02 -> ... -> 1.10.10 -> 2.01.01
+# 除 x.10.10 -> (x+1).01.01 外，仍然每 10 个 patch 进一个 minor。
 # BASE_BUILD 那次构建对应 BASE_VERSION，之后每次构建 +1。
 # 用法：bash tool/version.sh <run_number>
 set -euo pipefail
@@ -32,4 +33,8 @@ else
   patch=$((within % 10 + 1))
 fi
 
-printf '%d.%02d.%02d\n' "$major" "$minor" "$patch"
+if [ "$major" -eq 0 ]; then
+  printf '0.%d.%02d\n' "$minor" "$patch"
+else
+  printf '%d.%02d.%02d\n' "$major" "$minor" "$patch"
+fi

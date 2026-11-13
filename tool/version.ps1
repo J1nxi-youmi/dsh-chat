@@ -22,4 +22,8 @@ if ($idx -lt $firstCycle) {
   $patch = [int](($within % 10) + 1)
 }
 
-Write-Output ("{0}.{1:D2}.{2:D2}" -f $major, $minor, $patch)
+if ($major -eq 0) {
+  Write-Output ("0.{0}.{1:D2}" -f $minor, $patch)
+} else {
+  Write-Output ("{0}.{1:D2}.{2:D2}" -f $major, $minor, $patch)
+}

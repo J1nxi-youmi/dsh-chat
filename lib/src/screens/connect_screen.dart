@@ -80,7 +80,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StarryBackground(
+      body: QingyuBackground(
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(

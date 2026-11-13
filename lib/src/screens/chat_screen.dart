@@ -57,7 +57,6 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   bool _recordStarting = false;
   bool _recordReleasedBeforeStart = false;
   bool _dragging = false;
-  final int _uploading = 0;
 
   List<Message> _messages = const [];
   final Map<String, GlobalKey> _messageKeys = {};
@@ -705,14 +704,13 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final inner = Column(
       children: [
         if (!_connected) _connectionBanner(),
-        if (_uploading > 0) _uploadBanner(),
         Expanded(child: _messageList()),
         _composer(),
       ],
     );
     // 桌面 embedded：背景由最外层（desktop_home）统一绘制，这里保持透明，
     // 避免两层星空叠出黑竖条；手机端自己画星空。
-    final body = _isDesktop ? inner : StarryBackground(child: inner);
+    final body = _isDesktop ? inner : QingyuBackground(child: inner);
     // 桌面端：整块聊天区都能接住拖进来的文件。
     final content = _isDesktop
         ? DropTarget(
@@ -806,34 +804,6 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _uploadBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppTheme.accent.withValues(alpha: 0.05),
-        border: Border(
-          bottom: BorderSide(color: AppTheme.accent.withValues(alpha: 0.12)),
-        ),
-      ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppTheme.accent,
-            ),
-          ),
-          SizedBox(width: 8),
-          Text('正在上传…', style: TextStyle(fontSize: 11, color: AppTheme.accent)),
-        ],
       ),
     );
   }

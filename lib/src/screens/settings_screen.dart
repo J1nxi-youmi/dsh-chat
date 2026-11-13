@@ -191,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Divider(height: 1, color: AppTheme.line),
         ),
       ),
-      body: StarryBackground(
+      body: QingyuBackground(
         child: LayoutBuilder(
           builder: (context, constraints) =>
               constraints.maxWidth >= 760 ? _wideBody() : _narrowBody(),

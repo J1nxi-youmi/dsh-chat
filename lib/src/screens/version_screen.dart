@@ -189,7 +189,7 @@ class _VersionScreenState extends State<VersionScreen> {
           child: Divider(height: 1, color: AppTheme.line),
         ),
       ),
-      body: StarryBackground(
+      body: QingyuBackground(
         child: FutureBuilder<UpdateInfo>(
           future: _future,
           builder: (context, snapshot) {

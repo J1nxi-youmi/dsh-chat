@@ -212,7 +212,7 @@ class _DesktopHomeState extends State<DesktopHome> {
       },
       child: Focus(
         autofocus: true,
-        child: StarryBackground(
+        child: QingyuBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             body: Row(

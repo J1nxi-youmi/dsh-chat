@@ -117,14 +117,11 @@ class AppTheme {
       ),
     );
   }
-
-  /// 兼容旧调用：旧的暗色入口现在直接返回青屿浅色主题。
-  static ThemeData dark() => light();
 }
 
 /// 青屿背景：暖白到浅米色的柔和渐变，保留极淡的绿色光晕。
-class StarryBackground extends StatelessWidget {
-  const StarryBackground({super.key, this.child});
+class QingyuBackground extends StatelessWidget {
+  const QingyuBackground({super.key, this.child});
 
   final Widget? child;
 

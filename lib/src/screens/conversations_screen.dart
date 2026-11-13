@@ -202,7 +202,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           child: Divider(height: 1, color: AppTheme.line),
         ),
       ),
-      body: StarryBackground(
+      body: QingyuBackground(
         child: Column(
           children: [
             Padding(

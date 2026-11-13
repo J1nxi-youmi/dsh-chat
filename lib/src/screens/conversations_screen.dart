@@ -200,25 +200,25 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: SizedBox(
-                height: 42,
+                height: 40,
                 child: TextField(
                   controller: _search,
                   onChanged: (value) => setState(() => _query = value),
-                  style: const TextStyle(fontSize: 13),
+                  style: const TextStyle(fontSize: 12),
                   decoration: InputDecoration(
                     hintText: '搜索会话',
                     isDense: true,
                     prefixIcon: const Icon(
                       Icons.search_rounded,
-                      size: 18,
+                      size: 17,
                       color: AppTheme.muted,
                     ),
                     prefixIconConstraints: const BoxConstraints(
-                      minWidth: 42,
+                      minWidth: 40,
                       minHeight: 0,
                     ),
                     filled: true,
-                    fillColor: AppTheme.panel,
+                    fillColor: AppTheme.panelAlt,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppTheme.line),

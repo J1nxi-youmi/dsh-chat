@@ -30,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _source = UpdateService.defaultSource;
   int _section = 0;
   bool _testing = false;
+  String _appearance = 'system';
 
   @override
   void initState() {
@@ -37,6 +38,78 @@ class _SettingsScreenState extends State<SettingsScreen> {
     UpdateService.source().then((value) {
       if (mounted) setState(() => _source = value);
     });
+    SharedPreferences.getInstance().then((prefs) {
+      if (!mounted) return;
+      setState(
+        () => _appearance = prefs.getString('appearance.mode') ?? 'system',
+      );
+    });
+  }
+
+  String get _appearanceLabel => _appearance == 'light' ? '浅色' : '跟随系统 · 浅色';
+
+  Future<void> _showAppearance() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppTheme.panel,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(18, 0, 18, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '界面外观',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.brightness_auto_rounded,
+                color: AppTheme.accent,
+              ),
+              title: const Text('跟随系统'),
+              subtitle: const Text('系统切换深色时暂保持青屿浅色'),
+              trailing: _appearance == 'system'
+                  ? const Icon(Icons.check_rounded, color: AppTheme.accent)
+                  : null,
+              onTap: () => Navigator.of(sheetContext).pop('system'),
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.light_mode_rounded,
+                color: AppTheme.accent,
+              ),
+              title: const Text('浅色'),
+              subtitle: const Text('始终使用青屿暖白主题'),
+              trailing: _appearance == 'light'
+                  ? const Icon(Icons.check_rounded, color: AppTheme.accent)
+                  : null,
+              onTap: () => Navigator.of(sheetContext).pop('light'),
+            ),
+            const ListTile(
+              enabled: false,
+              leading: Icon(Icons.dark_mode_outlined),
+              title: Text('深色'),
+              subtitle: Text('深色主题正在适配'),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('appearance.mode', choice);
+    if (!mounted) return;
+    setState(() => _appearance = choice);
   }
 
   Future<void> _editSource() async {
@@ -552,81 +625,189 @@ class _SettingsScreenState extends State<SettingsScreen> {
             AnimatedBuilder(
               animation: AppProfile.instance,
               builder: (context, _) => _settingsCard([
-                ListTile(
-                  leading: UserAvatar(
-                    name: AppProfile.instance.displayName,
-                    size: 42,
-                    image: AppProfile.instance.avatarImage,
-                  ),
-                  title: Text(AppProfile.instance.displayName),
-                  subtitle: const Text('编辑昵称与头像 · 云端同步'),
-                  trailing: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppTheme.muted,
-                  ),
+                InkWell(
                   onTap: () => showDialog<void>(
                     context: context,
                     builder: (_) => ProfileDialog(api: widget.api),
                   ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        UserAvatar(
+                          name: AppProfile.instance.displayName,
+                          size: 44,
+                          image: AppProfile.instance.avatarImage,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                AppProfile.instance.displayName,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              const Text(
+                                '编辑昵称与头像 · 云端同步',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: AppTheme.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 16,
+                          color: AppTheme.muted,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ]),
             ),
-            const SizedBox(height: 12),
+            _sectionLabel('连接与应用'),
             _settingsCard([
-              ListTile(
-                leading: const Icon(Icons.dns_rounded, color: AppTheme.accent),
-                title: const Text('服务器'),
-                subtitle: Text(
-                  widget.server,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              _settingRow(
+                icon: Icons.dns_rounded,
+                title: '服务器',
+                subtitle: widget.server,
               ),
-              ListTile(
-                leading: const Icon(
-                  Icons.info_outline_rounded,
-                  color: AppTheme.accent,
-                ),
-                title: const Text('版本'),
-                subtitle: Text(UpdateService.displayVersion),
-                trailing: const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppTheme.muted,
-                ),
+              _rowDivider(),
+              _settingRow(
+                icon: Icons.link_rounded,
+                title: '更新源',
+                subtitle: _source,
+                onTap: _editSource,
+              ),
+              _rowDivider(),
+              _settingRow(
+                icon: Icons.info_outline_rounded,
+                title: '版本与更新',
+                subtitle: UpdateService.displayVersion,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const VersionScreen()),
                 ),
               ),
             ]),
-            const SizedBox(height: 12),
+            _sectionLabel('其他'),
             _settingsCard([
-              ListTile(
-                leading: const Icon(Icons.link_rounded, color: AppTheme.accent),
-                title: const Text('更新源'),
-                subtitle: Text(
-                  _source,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: const Icon(
+              _settingRow(
+                icon: Icons.palette_outlined,
+                title: '界面外观',
+                subtitle: _appearanceLabel,
+                onTap: _showAppearance,
+              ),
+              _rowDivider(),
+              _settingRow(
+                icon: Icons.swap_horiz_rounded,
+                title: '换一台 DSH',
+                subtitle: '清掉当前地址和令牌，回到连接页',
+                onTap: _switchServer,
+                danger: true,
+              ),
+            ]),
+            const SizedBox(height: 20),
+            const Center(
+              child: Text(
+                '青屿 · 连接你的每一台设备',
+                style: TextStyle(fontSize: 8, color: AppTheme.muted),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 16, 4, 7),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.4,
+          color: AppTheme.muted,
+        ),
+      ),
+    );
+  }
+
+  Widget _rowDivider() {
+    return const Divider(height: 1, indent: 56, color: AppTheme.line);
+  }
+
+  Widget _settingRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+    bool danger = false,
+  }) {
+    final color = danger ? AppTheme.error : AppTheme.accent;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.09),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(icon, size: 16, color: color),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.text,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 8.5,
+                      height: 1.35,
+                      color: AppTheme.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (onTap != null)
+              const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Icon(
                   Icons.chevron_right_rounded,
+                  size: 15,
                   color: AppTheme.muted,
                 ),
-                onTap: _editSource,
               ),
-            ]),
-            const SizedBox(height: 12),
-            _settingsCard([
-              ListTile(
-                leading: const Icon(
-                  Icons.swap_horiz_rounded,
-                  color: AppTheme.error,
-                ),
-                title: const Text('换一台 DSH'),
-                subtitle: const Text('清掉当前地址和令牌，回到连接页'),
-                onTap: _switchServer,
-              ),
-            ]),
           ],
         ),
       ),

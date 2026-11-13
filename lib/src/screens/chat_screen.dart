@@ -52,6 +52,8 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _recorder = AudioRecorder();
   bool _atBottom = true;
   int _unreadBelow = 0;
+  double _lastKeyboardInset = 0;
+  Timer? _keyboardSettleTimer;
 
   bool get _isDesktop =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
@@ -111,6 +113,7 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _input.removeListener(_onInputChanged);
     _events?.cancel();
     _ticker?.cancel();
+    _keyboardSettleTimer?.cancel();
     _recorder.dispose();
     _input.dispose();
     _inputFocus.dispose();
@@ -131,18 +134,20 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeMetrics() {
-    // 键盘开合会改变视口高度。输入框有焦点时用户正在聊天，应跟随底部；
-    // 只在真正翻历史且未聚焦时才保持当前位置。
+    _scheduleKeyboardSettle();
+  }
+
+  /// 键盘动画会连续触发多次 metrics；等最后一次 inset 变化结束后再校准，
+  /// 避免列表停在键盘动画中间的高度、收起后底部留空。
+  void _scheduleKeyboardSettle() {
+    _keyboardSettleTimer?.cancel();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_atBottom || _inputFocus.hasFocus) {
+      if (_atBottom || _inputFocus.hasFocus) _jumpToBottom();
+    });
+    _keyboardSettleTimer = Timer(const Duration(milliseconds: 360), () {
+      if (mounted && (_atBottom || _inputFocus.hasFocus)) {
         _jumpToBottom();
-        // 键盘动画结束后再校一次，避免停在动画中间的高度。
-        Future<void>.delayed(const Duration(milliseconds: 260), () {
-          if (mounted && (_atBottom || _inputFocus.hasFocus)) {
-            _jumpToBottom();
-          }
-        });
       }
     });
   }
@@ -769,6 +774,11 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    if (keyboardInset != _lastKeyboardInset) {
+      _lastKeyboardInset = keyboardInset;
+      _scheduleKeyboardSettle();
+    }
     final inner = Column(
       children: [
         if (!_connected) _connectionBanner(),

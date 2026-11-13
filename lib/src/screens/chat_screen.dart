@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api.dart';
@@ -45,7 +46,7 @@ class ChatScreen extends StatefulWidget {
 class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _input = TextEditingController();
   final _inputFocus = FocusNode();
-  final _scroll = ScrollController();
+  final _itemScroll = ItemScrollController();
   final _recorder = AudioRecorder();
 
   bool get _isDesktop =>
@@ -59,7 +60,6 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   bool _dragging = false;
 
   List<Message> _messages = const [];
-  final Map<String, GlobalKey> _messageKeys = {};
   String? _highlightedMessageId;
 
   /// 待发送附件：先显示本地预览，上传在后台跑，点发送时若还没传完就等它。
@@ -108,7 +108,6 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _recorder.dispose();
     _input.dispose();
     _inputFocus.dispose();
-    _scroll.dispose();
     super.dispose();
   }
 
@@ -220,11 +219,17 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   void _jumpToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scroll.hasClients) return;
-      _scroll.animateTo(
-        _scroll.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
+      if (!mounted || !_itemScroll.isAttached) return;
+      final count = _messages.length + _outbox.length + (_sending ? 1 : 0);
+      if (count == 0) return;
+      unawaited(
+        _itemScroll
+            .scrollTo(
+              index: count - 1,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+            )
+            .catchError((_) {}),
       );
     });
   }
@@ -849,18 +854,17 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _jumpToMessage(Message target) async {
+    final index = _messages.indexWhere((item) => item.id == target.id);
+    if (index < 0) return;
     setState(() => _highlightedMessageId = target.id);
     await Future<void>.delayed(Duration.zero);
-    if (!mounted) return;
-    final targetContext = _messageKeys[target.id]?.currentContext;
-    if (targetContext != null && targetContext.mounted) {
-      await Scrollable.ensureVisible(
-        targetContext,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-        alignment: 0.25,
-      );
-    }
+    if (!mounted || !_itemScroll.isAttached) return;
+    await _itemScroll.scrollTo(
+      index: index,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      alignment: 0.25,
+    );
     await Future<void>.delayed(const Duration(milliseconds: 1600));
     if (mounted && _highlightedMessageId == target.id) {
       setState(() => _highlightedMessageId = null);
@@ -886,44 +890,34 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         constraints: BoxConstraints(
           maxWidth: _isDesktop ? 780 : double.infinity,
         ),
-        child: ListView(
-          controller: _scroll,
+        child: ScrollablePositionedList.builder(
+          itemScrollController: _itemScroll,
           padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
-          children: [
-            for (var index = 0; index < _messages.length; index++)
-              Container(
-                key: _messageKeys.putIfAbsent(
-                  _messages[index].id,
-                  () => GlobalKey(),
-                ),
-                child: _needsDivider(index)
-                    ? Column(
-                        children: [
-                          _timeDivider(_messages[index].at),
-                          MessageBubble(
-                            message: _messages[index],
-                            mediaUrl: widget.api.mediaUrl,
-                            highlighted:
-                                _highlightedMessageId == _messages[index].id,
-                          ),
-                        ],
-                      )
-                    : MessageBubble(
-                        message: _messages[index],
-                        mediaUrl: widget.api.mediaUrl,
-                        highlighted:
-                            _highlightedMessageId == _messages[index].id,
-                      ),
-              ),
-            for (final item in _outbox)
-              MessageBubble(
+          itemCount: _messages.length + _outbox.length + (_sending ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index < _messages.length) {
+              final message = _messages[index];
+              final bubble = MessageBubble(
+                message: message,
+                mediaUrl: widget.api.mediaUrl,
+                highlighted: _highlightedMessageId == message.id,
+              );
+              return _needsDivider(index)
+                  ? Column(children: [_timeDivider(message.at), bubble])
+                  : bubble;
+            }
+            final outboxIndex = index - _messages.length;
+            if (outboxIndex < _outbox.length) {
+              final item = _outbox[outboxIndex];
+              return MessageBubble(
                 message: item.asMessage(),
                 mediaUrl: widget.api.mediaUrl,
                 status: item.status,
                 onRetry: item.status == 'failed' ? () => _retry(item) : null,
-              ),
-            if (_sending) const TypingRow(),
-          ],
+              );
+            }
+            return const TypingRow();
+          },
         ),
       ),
     );

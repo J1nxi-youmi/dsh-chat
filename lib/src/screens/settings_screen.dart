@@ -30,7 +30,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _source = UpdateService.defaultSource;
   int _section = 0;
   bool _testing = false;
-  String _appearance = 'system';
 
   @override
   void initState() {
@@ -38,29 +37,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     UpdateService.source().then((value) {
       if (mounted) setState(() => _source = value);
     });
-    SharedPreferences.getInstance().then((prefs) {
-      if (!mounted) return;
-      setState(
-        () => _appearance = prefs.getString('appearance.mode') ?? 'system',
-      );
-    });
   }
 
-  String get _appearanceLabel => _appearance == 'light' ? '浅色' : '跟随系统 · 浅色';
-
   Future<void> _showAppearance() async {
-    final choice = await showModalBottomSheet<String>(
+    await showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppTheme.panel,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
-      builder: (sheetContext) => SafeArea(
+      builder: (sheetContext) => const SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(18, 0, 18, 8),
               child: Align(
                 alignment: Alignment.centerLeft,
@@ -71,45 +62,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             ListTile(
-              leading: const Icon(
-                Icons.brightness_auto_rounded,
-                color: AppTheme.accent,
-              ),
-              title: const Text('跟随系统'),
-              subtitle: const Text('系统切换深色时暂保持青屿浅色'),
-              trailing: _appearance == 'system'
-                  ? const Icon(Icons.check_rounded, color: AppTheme.accent)
-                  : null,
-              onTap: () => Navigator.of(sheetContext).pop('system'),
+              leading: Icon(Icons.light_mode_rounded, color: AppTheme.accent),
+              title: Text('浅色'),
+              subtitle: Text('青屿当前使用的暖白主题'),
+              trailing: Icon(Icons.check_rounded, color: AppTheme.accent),
             ),
             ListTile(
-              leading: const Icon(
-                Icons.light_mode_rounded,
-                color: AppTheme.accent,
-              ),
-              title: const Text('浅色'),
-              subtitle: const Text('始终使用青屿暖白主题'),
-              trailing: _appearance == 'light'
-                  ? const Icon(Icons.check_rounded, color: AppTheme.accent)
-                  : null,
-              onTap: () => Navigator.of(sheetContext).pop('light'),
-            ),
-            const ListTile(
               enabled: false,
               leading: Icon(Icons.dark_mode_outlined),
               title: Text('深色'),
-              subtitle: Text('深色主题正在适配'),
+              subtitle: Text('主题系统适配中，暂不可用'),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
           ],
         ),
       ),
     );
-    if (choice == null) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('appearance.mode', choice);
-    if (!mounted) return;
-    setState(() => _appearance = choice);
   }
 
   Future<void> _editSource() async {
@@ -705,7 +673,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _settingRow(
                 icon: Icons.palette_outlined,
                 title: '界面外观',
-                subtitle: _appearanceLabel,
+                subtitle: '跟随系统 · 浅色',
                 onTap: _showAppearance,
               ),
               _rowDivider(),

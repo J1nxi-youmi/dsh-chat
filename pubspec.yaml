@@ -31,8 +31,12 @@ dependencies:
   pasteboard: ^0.6.0
   # Android：下载完 APK 后调起系统安装器
   open_filex: ^4.6.0
+  # 消息列表懒加载 + 按索引定位（搜索跳转）
+  scrollable_positioned_list: ^0.3.8
 
 dev_dependencies:
+  flutter_test:
+    sdk: flutter
   flutter_lints: ^4.0.0
   # CI 里生成 Android/Windows 图标
   flutter_launcher_icons: ^0.14.1

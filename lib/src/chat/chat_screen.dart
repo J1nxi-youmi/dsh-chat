@@ -17,11 +17,11 @@ import 'package:dsh_chat/src/core/image_utils.dart';
 import 'package:dsh_chat/src/core/models.dart';
 import 'package:dsh_chat/src/core/profile.dart';
 import 'package:dsh_chat/src/core/theme.dart';
-import 'chat_message_list.dart';
-import 'chat_scroll_controller.dart';
-import 'message_search_dialog.dart';
-import 'pending_attachment_tile.dart';
-import 'sticker_panel.dart';
+import 'controllers/chat_scroll_controller.dart';
+import 'widgets/chat_message_list.dart';
+import 'widgets/message_search_dialog.dart';
+import 'widgets/pending_attachment_tile.dart';
+import 'widgets/sticker_panel.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:dsh_chat/src/chat/message_bubble.dart';
+import 'package:dsh_chat/src/chat/widgets/message_bubble.dart';
 import 'package:dsh_chat/src/core/models.dart';
 
 void main() {
@@ -114,8 +114,8 @@ void main() {
     await tester.longPress(find.byType(MessageBubble));
     await tester.pumpAndSettle();
 
-    expect(find.text('复制文字'), findsOneWidget);
-    expect(find.text('删除本地显示'), findsOneWidget);
+    expect(find.text('复制'), findsOneWidget);
+    expect(find.text('删除'), findsOneWidget);
     expect(find.text('引用回复'), findsNothing);
     expect(find.text('分享到群'), findsNothing);
   });
@@ -157,7 +157,7 @@ void main() {
 
     expect(find.text('复制'), findsOneWidget);
     expect(find.text('保存'), findsOneWidget);
-    expect(find.text('删除本地显示'), findsOneWidget);
+    expect(find.text('删除'), findsOneWidget);
     expect(find.text('另存为'), findsNothing);
     expect(find.text('打开文件夹'), findsNothing);
   });
@@ -199,7 +199,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('转文字'), findsOneWidget);
-    expect(find.text('删除本地显示'), findsOneWidget);
+    expect(find.text('删除'), findsOneWidget);
     expect(find.text('复制'), findsNothing);
   });
 

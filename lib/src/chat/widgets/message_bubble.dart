@@ -9,7 +9,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:dsh_chat/src/chat/chat_file_actions.dart';
+import 'package:dsh_chat/src/chat/services/chat_file_actions.dart';
 import 'package:dsh_chat/src/core/models.dart';
 import 'package:dsh_chat/src/core/profile.dart';
 import 'package:dsh_chat/src/core/theme.dart';
@@ -36,7 +36,7 @@ class _MenuArrow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      size: const Size(14, 7),
+      size: const Size(10, 5),
       painter: _MenuArrowPainter(pointsDown),
     );
   }
@@ -410,10 +410,10 @@ class MessageBubble extends StatelessWidget {
     required double bubbleBottom,
   }) {
     final size = MediaQuery.sizeOf(context);
-    const itemWidth = 68.0;
-    const barHeight = 64.0;
-    const arrowHeight = 7.0;
-    const gap = 10.0;
+    const itemWidth = 42.0;
+    const barHeight = 44.0;
+    const arrowHeight = 5.0;
+    const gap = 8.0;
     final width = entries.length * itemWidth + 12;
     const totalHeight = barHeight + arrowHeight;
     final left = (position.dx - width / 2).clamp(8.0, size.width - width - 8);
@@ -444,7 +444,7 @@ class MessageBubble extends StatelessWidget {
                       height: barHeight,
                       decoration: BoxDecoration(
                         color: const Color(0xFF3A3E42),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.24),
@@ -467,14 +467,16 @@ class MessageBubble extends StatelessWidget {
                                   children: [
                                     Icon(
                                       _actionIcon(action),
-                                      size: 22,
+                                      size: 18,
                                       color: Colors.white,
                                     ),
-                                    const SizedBox(height: 5),
+                                    const SizedBox(height: 3),
                                     Text(
-                                      _actionLabel(action),
+                                      _mobileActionLabel(action),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 9.5,
                                         color: Colors.white,
                                       ),
                                     ),
@@ -523,6 +525,20 @@ class MessageBubble extends StatelessWidget {
       _MessageAction.open => Icons.open_in_new_rounded,
       _MessageAction.openFolder => Icons.folder_open_rounded,
       _MessageAction.transcribe => Icons.text_fields_rounded,
+    };
+  }
+
+  String _mobileActionLabel(_MessageAction action) {
+    return switch (action) {
+      _MessageAction.copy => '复制',
+      _MessageAction.reply => '引用',
+      _MessageAction.delete => '删除',
+      _MessageAction.copyFile => '复制',
+      _MessageAction.saveAs => '另存为',
+      _MessageAction.save => '保存',
+      _MessageAction.open => '打开',
+      _MessageAction.openFolder => '文件夹',
+      _MessageAction.transcribe => '转文字',
     };
   }
 

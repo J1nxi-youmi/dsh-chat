@@ -990,76 +990,6 @@ class ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _shareMessage(Message message) async {
-    try {
-      final conversations = await widget.api.conversations();
-      final targets = conversations
-          .where((item) => item.id != widget.conversationId)
-          .toList();
-      if (targets.isEmpty) {
-        _toast('没有可以分享的会话');
-        return;
-      }
-      if (!mounted) return;
-      final target = await showDialog<Conversation>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          backgroundColor: AppTheme.panel,
-          title: const Text('分享到群'),
-          content: SizedBox(
-            width: 360,
-            height: 320,
-            child: ListView.separated(
-              itemCount: targets.length,
-              separatorBuilder: (_, __) =>
-                  const Divider(height: 1, color: AppTheme.line),
-              itemBuilder: (context, index) {
-                final item = targets[index];
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    Icons.chat_bubble_outline_rounded,
-                    size: 18,
-                    color: AppTheme.accent,
-                  ),
-                  title: Text(
-                    item.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    item.preview,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: () => Navigator.of(dialogContext).pop(item),
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('取消'),
-            ),
-          ],
-        ),
-      );
-      if (target == null || !mounted) return;
-      final body = message.text.trim().isEmpty
-          ? message.attachments.map((item) => item.name).join('、')
-          : message.text;
-      await widget.api.sendMessage(
-        target.id,
-        text: body,
-        attachmentIds: message.attachments.map((item) => item.id).toList(),
-      );
-      if (mounted) _toast('已分享到 ${target.title}');
-    } catch (error) {
-      if (mounted) _toast('分享失败：$error');
-    }
-  }
-
   Widget _messageList() {
     if (_error != null) {
       return Center(
@@ -1084,7 +1014,6 @@ class ChatScreenState extends State<ChatScreen> {
       isDesktop: _isDesktop,
       onRetry: _retry,
       onReply: _startReply,
-      onShare: _shareMessage,
       onDelete: _hideMessage,
       onTranscribe: _transcribeVoice,
     );

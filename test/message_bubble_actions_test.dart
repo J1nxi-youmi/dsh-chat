@@ -5,7 +5,7 @@ import 'package:dsh_chat/src/chat/message_bubble.dart';
 import 'package:dsh_chat/src/core/models.dart';
 
 void main() {
-  testWidgets('长按消息弹出四项操作，删除会回调', (tester) async {
+  testWidgets('长按文字消息弹出操作，删除会回调', (tester) async {
     var deleted = false;
     final message = Message(
       id: 'm1',
@@ -23,7 +23,7 @@ void main() {
             message: message,
             mediaUrl: (value) => value,
             onReply: () {},
-            onShare: () {},
+
             onDelete: () => deleted = true,
           ),
         ),
@@ -35,7 +35,7 @@ void main() {
 
     expect(find.text('复制文字'), findsOneWidget);
     expect(find.text('引用回复'), findsOneWidget);
-    expect(find.text('分享到群'), findsOneWidget);
+    expect(find.text('分享到群'), findsNothing);
     expect(find.text('删除本地显示'), findsOneWidget);
 
     await tester.tap(find.text('删除本地显示'));
@@ -104,7 +104,7 @@ void main() {
             message: message,
             mediaUrl: (value) => value,
             onReply: () {},
-            onShare: () {},
+
             onDelete: () {},
           ),
         ),

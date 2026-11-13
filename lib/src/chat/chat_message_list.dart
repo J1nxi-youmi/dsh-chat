@@ -20,7 +20,6 @@ class ChatMessageList extends StatelessWidget {
     required this.isDesktop,
     required this.onRetry,
     required this.onReply,
-    required this.onShare,
     required this.onDelete,
     required this.onTranscribe,
   });
@@ -35,7 +34,6 @@ class ChatMessageList extends StatelessWidget {
   final bool isDesktop;
   final ValueChanged<Outgoing> onRetry;
   final ValueChanged<Message> onReply;
-  final ValueChanged<Message> onShare;
   final ValueChanged<Message> onDelete;
   final ValueChanged<Message> onTranscribe;
 
@@ -66,7 +64,6 @@ class ChatMessageList extends StatelessWidget {
                 mediaUrl: mediaUrl,
                 highlighted: highlightedMessageId == message.id,
                 onReply: () => onReply(message),
-                onShare: () => onShare(message),
                 onDelete: () => onDelete(message),
                 onTranscribe: () => onTranscribe(message),
               );

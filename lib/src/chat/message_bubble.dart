@@ -19,7 +19,6 @@ final _linkPattern = RegExp('https?://[^\\s<>\'"]+');
 enum _MessageAction {
   copy,
   reply,
-  share,
   delete,
   copyFile,
   saveAs,
@@ -39,7 +38,6 @@ class MessageBubble extends StatelessWidget {
     this.onRetry,
     this.highlighted = false,
     this.onReply,
-    this.onShare,
     this.onDelete,
     this.onTranscribe,
   });
@@ -57,7 +55,6 @@ class MessageBubble extends StatelessWidget {
   final bool highlighted;
 
   final VoidCallback? onReply;
-  final VoidCallback? onShare;
   final VoidCallback? onDelete;
   final VoidCallback? onTranscribe;
 
@@ -208,7 +205,6 @@ class MessageBubble extends StatelessWidget {
             ] else ...[
               if (text.isNotEmpty) _MessageAction.copy,
               if (onReply != null) _MessageAction.reply,
-              if (onShare != null) _MessageAction.share,
               if (voice != null && onTranscribe != null)
                 _MessageAction.transcribe,
             ],
@@ -241,9 +237,6 @@ class MessageBubble extends StatelessWidget {
         break;
       case _MessageAction.reply:
         onReply?.call();
-        break;
-      case _MessageAction.share:
-        onShare?.call();
         break;
       case _MessageAction.delete:
         onDelete?.call();
@@ -407,7 +400,6 @@ class MessageBubble extends StatelessWidget {
     return switch (action) {
       _MessageAction.copy => Icons.content_copy_rounded,
       _MessageAction.reply => Icons.reply_rounded,
-      _MessageAction.share => Icons.share_rounded,
       _MessageAction.delete => Icons.delete_outline_rounded,
       _MessageAction.copyFile => Icons.content_copy_rounded,
       _MessageAction.saveAs => Icons.save_as_outlined,
@@ -422,7 +414,6 @@ class MessageBubble extends StatelessWidget {
     return switch (action) {
       _MessageAction.copy => '复制文字',
       _MessageAction.reply => '引用回复',
-      _MessageAction.share => '分享到群',
       _MessageAction.delete => '删除本地显示',
       _MessageAction.copyFile => '复制',
       _MessageAction.saveAs => '另存为',

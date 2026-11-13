@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../api.dart';
@@ -10,7 +11,7 @@ import 'chat_screen.dart';
 import 'profile_dialog.dart';
 import 'settings_screen.dart';
 
-/// 桌面端：左边图标栏 + 会话列表 + 右边聊天，QQ / 星伴那种三栏。
+/// 桌面端：会话列表 + 右侧聊天，青屿陪伴版的双栏布局。
 class DesktopHome extends StatefulWidget {
   const DesktopHome({
     super.key,
@@ -29,6 +30,7 @@ class DesktopHome extends StatefulWidget {
 
 class _DesktopHomeState extends State<DesktopHome> {
   final _search = TextEditingController();
+  final _searchFocus = FocusNode();
   List<Conversation> _items = const [];
   String? _selectedId;
   String _query = '';
@@ -65,6 +67,7 @@ class _DesktopHomeState extends State<DesktopHome> {
     _events?.cancel();
     _refreshTimer?.cancel();
     _search.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -183,37 +186,54 @@ class _DesktopHomeState extends State<DesktopHome> {
     return null;
   }
 
+  void _clearSearch() {
+    _search.clear();
+    if (_query.isNotEmpty) setState(() => _query = '');
+    _searchFocus.unfocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = _selected;
-    return StarryBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Row(
-          children: [
-            SizedBox(width: 282, child: _listPane()),
-            Expanded(
-              child: selected == null
-                  ? _emptyPane()
-                  : Container(
-                      color: AppTheme.panel,
-                      child: Column(
-                        children: [
-                          _chatHeader(selected),
-                          Expanded(
-                            child: ChatScreen(
-                              key: ValueKey(selected.id),
-                              api: widget.api,
-                              conversationId: selected.id,
-                              title: selected.title,
-                              embedded: true,
-                            ),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
+          _searchFocus.requestFocus();
+        },
+        const SingleActivator(LogicalKeyboardKey.escape): _clearSearch,
+      },
+      child: Focus(
+        autofocus: true,
+        child: StarryBackground(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: Row(
+              children: [
+                SizedBox(width: 282, child: _listPane()),
+                Expanded(
+                  child: selected == null
+                      ? _emptyPane()
+                      : Container(
+                          color: AppTheme.panel,
+                          child: Column(
+                            children: [
+                              _chatHeader(selected),
+                              Expanded(
+                                child: ChatScreen(
+                                  key: ValueKey(selected.id),
+                                  api: widget.api,
+                                  conversationId: selected.id,
+                                  title: selected.title,
+                                  embedded: true,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -233,7 +253,7 @@ class _DesktopHomeState extends State<DesktopHome> {
               children: [
                 AnimatedBuilder(
                   animation: AppProfile.instance,
-                  builder: (context, _) => AvatarBadge(
+                  builder: (context, _) => UserAvatar(
                     name: AppProfile.instance.displayName,
                     size: 34,
                     image: AppProfile.instance.avatarImage,
@@ -321,6 +341,7 @@ class _DesktopHomeState extends State<DesktopHome> {
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             child: TextField(
               controller: _search,
+              focusNode: _searchFocus,
               onChanged: (value) => setState(() => _query = value),
               decoration: InputDecoration(
                 hintText: '搜索会话',
@@ -328,6 +349,17 @@ class _DesktopHomeState extends State<DesktopHome> {
                   Icons.search_rounded,
                   size: 18,
                   color: AppTheme.muted,
+                ),
+                suffixIcon: const Padding(
+                  padding: EdgeInsets.only(right: 10),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    widthFactor: 1,
+                    child: Text(
+                      'Ctrl K',
+                      style: TextStyle(fontSize: 9, color: AppTheme.muted),
+                    ),
+                  ),
                 ),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),

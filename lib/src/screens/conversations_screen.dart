@@ -149,7 +149,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                   context: context,
                   builder: (_) => ProfileDialog(api: widget.api),
                 ),
-                child: AvatarBadge(
+                child: UserAvatar(
                   name: AppProfile.instance.displayName,
                   size: 34,
                   image: AppProfile.instance.avatarImage,

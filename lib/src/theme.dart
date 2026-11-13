@@ -184,6 +184,61 @@ class RoundButton extends StatelessWidget {
 }
 
 /// 带渐变的小头像占位（用名字首字），比纯色圆更有「角色感」。
+/// 用户自己的头像。
+/// 设置过自定义头像就显示图片；否则用暖珊瑚色 + 昵称首字，
+/// 保证和左侧角色的默认头像明确区分。
+class UserAvatar extends StatelessWidget {
+  const UserAvatar({
+    super.key,
+    required this.name,
+    this.size = 46,
+    this.image,
+    this.onTap,
+  });
+
+  final String name;
+  final double size;
+  final ImageProvider? image;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (image != null) {
+      return AvatarBadge(name: name, size: size, image: image, onTap: onTap);
+    }
+    final initial = name.isEmpty ? '我' : name.substring(0, 1);
+    Widget face = Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF2B193), Color(0xFFCE756B)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFCE756B).withValues(alpha: 0.18),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Text(
+        initial,
+        style: TextStyle(
+          fontSize: size * 0.42,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+    );
+    if (onTap == null) return face;
+    return GestureDetector(onTap: onTap, child: face);
+  }
+}
+
 class AvatarBadge extends StatelessWidget {
   const AvatarBadge({
     super.key,

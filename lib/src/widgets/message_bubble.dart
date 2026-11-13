@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -50,10 +51,13 @@ class MessageBubble extends StatelessWidget {
             bottomLeft: Radius.circular(16),
             bottomRight: Radius.circular(16),
           );
-    return Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+    return GestureDetector(
+      onLongPress: () => _showActions(context),
+      onSecondaryTap: () => _showActions(context),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: mine
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!mine) avatar,
@@ -127,6 +131,44 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
+  /// 长按消息：复制文字（桌面端也可以右键打开同一个菜单）。
+  void _showActions(BuildContext context) {
+    final text = message.text.trim();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppTheme.panel,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (text.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.copy_rounded, color: AppTheme.accent),
+                title: const Text('复制文字'),
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(text: text));
+                  if (!sheetContext.mounted) return;
+                  Navigator.of(sheetContext).pop();
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('已复制')));
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.close_rounded, color: AppTheme.muted),
+              title: const Text('关闭'),
+              onTap: () => Navigator.of(sheetContext).pop(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _text(BuildContext context) {
     final spans = <InlineSpan>[];
     var index = 0;
@@ -182,24 +224,31 @@ class AttachmentView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (attachment.isImage) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          mediaUrl(attachment.url),
-          fit: BoxFit.cover,
-          loadingBuilder: (context, child, progress) {
-            if (progress == null) return child;
-            return const SizedBox(
-              height: 160,
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            );
-          },
-          errorBuilder: (_, __, ___) => const SizedBox(
-            height: 80,
-            child: Center(
-              child: Text(
-                '图片加载失败',
-                style: TextStyle(color: AppTheme.muted, fontSize: 12),
+      return GestureDetector(
+        onTap: () => showDialog<void>(
+          context: context,
+          barrierColor: Colors.black87,
+          builder: (_) => _ImageViewerDialog(url: mediaUrl(attachment.url)),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            mediaUrl(attachment.url),
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return const SizedBox(
+                height: 160,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              );
+            },
+            errorBuilder: (_, __, ___) => const SizedBox(
+              height: 80,
+              child: Center(
+                child: Text(
+                  '图片加载失败',
+                  style: TextStyle(color: AppTheme.muted, fontSize: 12),
+                ),
               ),
             ),
           ),
@@ -241,6 +290,67 @@ class AttachmentView extends StatelessWidget {
                   style: const TextStyle(fontSize: 11, color: AppTheme.muted),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 图片全屏预览：可双指缩放，右上角关闭。
+class _ImageViewerDialog extends StatelessWidget {
+  const _ImageViewerDialog({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      backgroundColor: Colors.black,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          InteractiveViewer(
+            minScale: 0.8,
+            maxScale: 4,
+            child: Center(
+              child: Image.network(
+                url,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, progress) => progress == null
+                    ? child
+                    : const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white70,
+                        ),
+                      ),
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Text(
+                    '图片加载失败',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Material(
+                  color: Colors.black54,
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    tooltip: '关闭',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -418,14 +528,14 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final image = mine ? AppProfile.instance.avatarImage : null;
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: AvatarBadge(
-        name: mine ? AppProfile.instance.displayName : '',
-        size: 30,
-        image: image,
-      ),
-    );
+    final face = mine
+        ? UserAvatar(
+            name: AppProfile.instance.displayName,
+            size: 30,
+            image: AppProfile.instance.avatarImage,
+          )
+        : const AvatarBadge(name: '', size: 30);
+
+    return Padding(padding: const EdgeInsets.only(top: 2), child: face);
   }
 }

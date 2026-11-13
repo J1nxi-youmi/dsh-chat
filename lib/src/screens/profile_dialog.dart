@@ -95,7 +95,7 @@ class _ProfileDialogState extends State<ProfileDialog> {
           Center(
             child: GestureDetector(
               onTap: _pick,
-              child: AvatarBadge(
+              child: UserAvatar(
                 name: _name.text,
                 size: 88,
                 image: AppProfile.instance.avatarImage,

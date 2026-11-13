@@ -275,11 +275,11 @@ class _DesktopHomeState extends State<DesktopHome> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'YOUR SPACE',
                         style: TextStyle(
                           fontSize: 8,
@@ -288,23 +288,13 @@ class _DesktopHomeState extends State<DesktopHome> {
                           color: AppTheme.muted,
                         ),
                       ),
-                      const SizedBox(height: 3),
-                      const Text(
+                      SizedBox(height: 3),
+                      Text(
                         '消息',
                         style: TextStyle(
                           fontSize: 19,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.text,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _connected ? '在呢，随时聊' : '连接中…',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: AppTheme.muted,
                         ),
                       ),
                     ],

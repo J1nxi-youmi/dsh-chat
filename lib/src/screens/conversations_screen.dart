@@ -157,25 +157,14 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '消息',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.text,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _connected ? '在呢，随时聊' : '连接中…',
-                    style: const TextStyle(fontSize: 10, color: AppTheme.muted),
-                  ),
-                ],
+            const Expanded(
+              child: Text(
+                '消息',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.text,
+                ),
               ),
             ),
           ],

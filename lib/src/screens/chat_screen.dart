@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
-import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api.dart';
@@ -18,8 +17,10 @@ import '../image_utils.dart';
 import '../models.dart';
 import '../profile.dart';
 import '../theme.dart';
-import '../widgets/message_bubble.dart';
+import '../widgets/chat_message_list.dart';
+import '../widgets/chat_scroll_controller.dart';
 import '../widgets/message_search_dialog.dart';
+import '../widgets/pending_attachment_tile.dart';
 import '../widgets/sticker_panel.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -47,11 +48,8 @@ class ChatScreen extends StatefulWidget {
 class ChatScreenState extends State<ChatScreen> {
   final _input = TextEditingController();
   final _inputFocus = FocusNode();
-  final _itemScroll = ItemScrollController();
-  final _itemPositions = ItemPositionsListener.create();
+  late final ChatScrollController _chatScroll;
   final _recorder = AudioRecorder();
-  bool _atBottom = true;
-  int _unreadBelow = 0;
 
   bool get _isDesktop =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
@@ -67,7 +65,7 @@ class ChatScreenState extends State<ChatScreen> {
   String? _highlightedMessageId;
 
   /// 待发送附件：先显示本地预览，上传在后台跑，点发送时若还没传完就等它。
-  final List<_PendingItem> _pending = [];
+  final List<PendingAttachment> _pending = [];
   final List<Future<void>> _uploadJobs = [];
 
   /// 还没被 ack 的消息；断线/重启后按顺序重发。
@@ -80,7 +78,6 @@ class ChatScreenState extends State<ChatScreen> {
   bool _recording = false;
   DateTime? _recordStarted;
   Timer? _ticker;
-  Timer? _bottomSettleTimer;
   Duration _recorded = Duration.zero;
   String? _error;
 
@@ -89,8 +86,14 @@ class ChatScreenState extends State<ChatScreen> {
     super.initState();
     activeConversationId.value = widget.conversationId;
     _connected = widget.api.connected.value;
+    _chatScroll = ChatScrollController(
+      contentCount: () =>
+          _messages.length + _outbox.length + (_sending ? 1 : 0),
+      onChanged: () {
+        if (mounted) setState(() {});
+      },
+    )..attach();
     widget.api.connected.addListener(_onConnection);
-    _itemPositions.itemPositions.addListener(_onItemPositionsChanged);
     _input.addListener(_onInputChanged);
     // 全局监听 Ctrl/Cmd+V：文本框自己也会处理文字粘贴，这里只额外抓图片/文件。
     HardwareKeyboard.instance.addHandler(_onGlobalKey);
@@ -106,11 +109,10 @@ class ChatScreenState extends State<ChatScreen> {
       activeConversationId.value = null;
     }
     widget.api.connected.removeListener(_onConnection);
-    _itemPositions.itemPositions.removeListener(_onItemPositionsChanged);
     _input.removeListener(_onInputChanged);
     _events?.cancel();
     _ticker?.cancel();
-    _bottomSettleTimer?.cancel();
+    _chatScroll.dispose();
     _recorder.dispose();
     _input.dispose();
     _inputFocus.dispose();
@@ -145,24 +147,6 @@ class ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _onItemPositionsChanged() {
-    if (!mounted) return;
-    final contentCount = _messages.length + _outbox.length + (_sending ? 1 : 0);
-    final atBottom =
-        contentCount == 0 ||
-        _itemPositions.itemPositions.value.any(
-          (position) => position.index == 0,
-        );
-    if (atBottom == _atBottom) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || atBottom == _atBottom) return;
-      setState(() {
-        _atBottom = atBottom;
-        if (atBottom) _unreadBelow = 0;
-      });
-    });
-  }
-
   Future<void> _load() async {
     try {
       final conversation = await widget.api.conversation(widget.conversationId);
@@ -174,10 +158,9 @@ class ChatScreenState extends State<ChatScreen> {
           (max, item) => item.seq > max ? item.seq : max,
         );
         _error = null;
-        _unreadBelow = 0;
-        _atBottom = true;
+        _chatScroll.reset();
       });
-      _scrollToBottom();
+      _chatScroll.scrollToBottom();
       unawaited(_syncSince());
       unawaited(_flushOutbox());
     } catch (error) {
@@ -202,7 +185,7 @@ class ChatScreenState extends State<ChatScreen> {
       });
       final added = _messages.length - before;
       if (added <= 0) return;
-      if (!_atBottom) setState(() => _unreadBelow += added);
+      if (!_chatScroll.atBottom) _chatScroll.addUnread(added);
     } catch (_) {
       /* 下次重连再补 */
     }
@@ -237,36 +220,7 @@ class ChatScreenState extends State<ChatScreen> {
     final before = _messages.length;
     setState(() => _merge(message));
     if (_messages.length <= before) return;
-    if (!_atBottom) setState(() => _unreadBelow += 1);
-  }
-
-  /// 只有主动发送才传 settle；键盘和收消息都不会调用这里。
-  void _scrollToBottom({bool settle = false}) {
-    _jumpNow();
-    // 本地消息插入后还会重建一帧，帧末再强制贴一次。
-    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpNow());
-    if (settle) {
-      _bottomSettleTimer?.cancel();
-      _bottomSettleTimer = Timer(const Duration(milliseconds: 350), () {
-        if (mounted && _atBottom) _jumpNow();
-      });
-    }
-  }
-
-  void _jumpNow() {
-    if (!mounted || !_itemScroll.isAttached) return;
-    final contentCount = _messages.length + _outbox.length + (_sending ? 1 : 0);
-    if (contentCount == 0) return;
-    if (_unreadBelow != 0 || !_atBottom) {
-      setState(() {
-        _unreadBelow = 0;
-        _atBottom = true;
-      });
-    }
-    // 反向列表的 index 0 是底部 1px 锚点。
-    // 用 jumpTo 而不是 scrollTo：发送后列表会立刻重建，动画容易被取消，
-    // 停在旧消息的位置。
-    _itemScroll.jumpTo(index: 0, alignment: 0);
+    if (!_chatScroll.atBottom) _chatScroll.addUnread(1);
   }
 
   Future<void> _pickFiles({bool imagesOnly = false}) async {
@@ -315,7 +269,7 @@ class ChatScreenState extends State<ChatScreen> {
     }
     // 先上屏：本地字节直接当预览，上传放后台，不用等隧道一个来回。
     final isImage = mime.startsWith('image/');
-    final item = _PendingItem(
+    final item = PendingAttachment(
       name: name,
       bytes: data,
       isImage: isImage,
@@ -522,7 +476,7 @@ class ChatScreenState extends State<ChatScreen> {
       );
       setState(
         () => _pending.add(
-          _PendingItem(
+          PendingAttachment(
             name: attachment.name,
             bytes: bytes,
             isImage: false,
@@ -597,12 +551,12 @@ class ChatScreenState extends State<ChatScreen> {
       _outbox.add(item);
     });
     // 本地消息先出现，此时立刻贴底；接口返回后再校一次。
-    _scrollToBottom();
+    _chatScroll.scrollToBottom();
     await _saveOutbox();
     await _deliver(item);
     if (mounted) {
       setState(() {});
-      _scrollToBottom(settle: true);
+      _chatScroll.scrollToBottom(settle: true);
     }
   }
 
@@ -704,11 +658,11 @@ class ChatScreenState extends State<ChatScreen> {
   Future<void> _retry(Outgoing item) async {
     item.status = 'sending';
     if (mounted) setState(() {});
-    _scrollToBottom();
+    _chatScroll.scrollToBottom();
     await _deliver(item);
     if (mounted) {
       setState(() {});
-      _scrollToBottom(settle: true);
+      _chatScroll.scrollToBottom(settle: true);
     }
   }
 
@@ -753,7 +707,7 @@ class ChatScreenState extends State<ChatScreen> {
           child: Stack(
             children: [
               Positioned.fill(child: _messageList()),
-              if (_unreadBelow > 0)
+              if (_chatScroll.unreadBelow > 0)
                 Positioned(right: 20, bottom: 12, child: _newMessagesButton()),
             ],
           ),
@@ -907,8 +861,8 @@ class ChatScreenState extends State<ChatScreen> {
     final contentCount = _messages.length + _outbox.length + (_sending ? 1 : 0);
     setState(() => _highlightedMessageId = target.id);
     await Future<void>.delayed(Duration.zero);
-    if (!mounted || !_itemScroll.isAttached) return;
-    await _itemScroll.scrollTo(
+    if (!mounted || !_chatScroll.itemScroll.isAttached) return;
+    await _chatScroll.itemScroll.scrollTo(
       index: contentCount - index,
       duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
@@ -928,7 +882,7 @@ class ChatScreenState extends State<ChatScreen> {
       shape: const StadiumBorder(side: BorderSide(color: AppTheme.line)),
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
-        onTap: () => _scrollToBottom(),
+        onTap: () => _chatScroll.scrollToBottom(),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
           child: Row(
@@ -941,7 +895,7 @@ class ChatScreenState extends State<ChatScreen> {
               ),
               const SizedBox(width: 3),
               Text(
-                '$_unreadBelow 条新消息',
+                '${_chatScroll.unreadBelow} 条新消息',
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
@@ -968,98 +922,16 @@ class ChatScreenState extends State<ChatScreen> {
         ),
       );
     }
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: _isDesktop ? 780 : double.infinity,
-        ),
-        child: ScrollablePositionedList.builder(
-          reverse: true,
-          itemScrollController: _itemScroll,
-          itemPositionsListener: _itemPositions,
-          padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
-          itemCount: _messages.length + _outbox.length + (_sending ? 1 : 0) > 0
-              ? _messages.length + _outbox.length + (_sending ? 1 : 0) + 1
-              : 0,
-          itemBuilder: (context, index) {
-            final contentCount =
-                _messages.length + _outbox.length + (_sending ? 1 : 0);
-            if (index == 0) {
-              return const SizedBox(height: 1);
-            }
-            final contentIndex = contentCount - index;
-            if (contentIndex < _messages.length) {
-              final message = _messages[contentIndex];
-              final bubble = MessageBubble(
-                message: message,
-                mediaUrl: widget.api.mediaUrl,
-                highlighted: _highlightedMessageId == message.id,
-              );
-              return _needsDivider(contentIndex)
-                  ? Column(children: [_timeDivider(message.at), bubble])
-                  : bubble;
-            }
-            final outboxIndex = contentIndex - _messages.length;
-            if (outboxIndex < _outbox.length) {
-              final item = _outbox[outboxIndex];
-              return MessageBubble(
-                message: item.asMessage(),
-                mediaUrl: widget.api.mediaUrl,
-                status: item.status,
-                onRetry: item.status == 'failed' ? () => _retry(item) : null,
-              );
-            }
-            return const TypingRow();
-          },
-        ),
-      ),
-    );
-  }
-
-  bool _needsDivider(int index) {
-    if (index == 0) return true;
-    final previous = _messages[index - 1].at;
-    final current = _messages[index].at;
-    if (previous.year != current.year ||
-        previous.month != current.month ||
-        previous.day != current.day) {
-      return true;
-    }
-    return current.difference(previous).inMinutes >= 5;
-  }
-
-  Widget _timeDivider(DateTime time) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final day = DateTime(time.year, time.month, time.day);
-    final String label;
-    if (day == today) {
-      label = '今天';
-    } else if (day == today.subtract(const Duration(days: 1))) {
-      label = '昨天';
-    } else if (time.year == now.year) {
-      label = '${time.month}月${time.day}日';
-    } else {
-      label = '${time.year}年${time.month}月${time.day}日';
-    }
-    final hhmm =
-        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-          decoration: BoxDecoration(
-            color: AppTheme.panelAlt.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            '$label $hhmm',
-            style: const TextStyle(fontSize: 11, color: AppTheme.muted),
-          ),
-        ),
-      ),
+    return ChatMessageList(
+      messages: _messages,
+      outbox: _outbox,
+      sending: _sending,
+      highlightedMessageId: _highlightedMessageId,
+      mediaUrl: widget.api.mediaUrl,
+      itemScrollController: _chatScroll.itemScroll,
+      itemPositionsListener: _chatScroll.itemPositions,
+      isDesktop: _isDesktop,
+      onRetry: _retry,
     );
   }
 
@@ -1071,160 +943,12 @@ class ChatScreenState extends State<ChatScreen> {
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: _pending.map(_pendingTile).toList(),
-      ),
-    );
-  }
-
-  Widget _pendingTile(_PendingItem item) {
-    if (item.isImage) {
-      return Stack(
-        clipBehavior: Clip.none,
         children: [
-          GestureDetector(
-            onTap: item.bytes == null
-                ? null
-                : () => showDialog<void>(
-                    context: context,
-                    barrierColor: Colors.black87,
-                    builder: (_) =>
-                        ImageViewerDialog(bytes: item.bytes, title: '待发送图片'),
-                  ),
-            child: Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: AppTheme.panelAlt,
-                borderRadius: BorderRadius.circular(11),
-                border: Border.all(color: AppTheme.line),
-                image: item.bytes == null
-                    ? null
-                    : DecorationImage(
-                        image: Image.memory(
-                          item.bytes!,
-                          fit: BoxFit.cover,
-                        ).image,
-                        fit: BoxFit.cover,
-                      ),
-              ),
-              child: !item.ready
-                  ? Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.24),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Center(
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    )
-                  : null,
+          for (final item in _pending)
+            PendingAttachmentTile(
+              item: item,
+              onRemove: () => setState(() => _pending.remove(item)),
             ),
-          ),
-          Positioned(
-            right: -5,
-            top: -5,
-            child: GestureDetector(
-              onTap: () => setState(() => _pending.remove(item)),
-              child: Container(
-                width: 18,
-                height: 18,
-                decoration: const BoxDecoration(
-                  color: AppTheme.error,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.close_rounded,
-                  size: 12,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    final size = item.ready
-        ? item.attachment!.sizeText
-        : '${((item.bytes?.length ?? 0) / 1024).round().clamp(1, 9999)} KB';
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 260),
-      padding: const EdgeInsets.fromLTRB(8, 8, 7, 8),
-      decoration: BoxDecoration(
-        color: AppTheme.panelAlt,
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppTheme.line),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 30,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppTheme.accent.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              item.isVoice
-                  ? Icons.mic_none_rounded
-                  : Icons.insert_drive_file_outlined,
-              size: 17,
-              color: AppTheme.accent,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  item.isVoice ? '语音' : item.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.text,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  item.ready ? size : '上传中… · $size',
-                  style: const TextStyle(fontSize: 8, color: AppTheme.muted),
-                ),
-                if (!item.ready)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: const LinearProgressIndicator(
-                        minHeight: 3,
-                        backgroundColor: AppTheme.line,
-                        color: AppTheme.accent,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () => setState(() => _pending.remove(item)),
-            child: const Icon(
-              Icons.close_rounded,
-              size: 15,
-              color: AppTheme.muted,
-            ),
-          ),
         ],
       ),
     );
@@ -1466,12 +1190,12 @@ class ChatScreenState extends State<ChatScreen> {
       at: DateTime.now(),
     );
     if (mounted) setState(() => _outbox.add(item));
-    _scrollToBottom();
+    _chatScroll.scrollToBottom();
     await _saveOutbox();
     await _deliver(item);
     if (mounted) {
       setState(() {});
-      _scrollToBottom(settle: true);
+      _chatScroll.scrollToBottom(settle: true);
     }
   }
 
@@ -1708,22 +1432,4 @@ class ChatScreenState extends State<ChatScreen> {
     }
     return KeyEventResult.handled;
   }
-}
-
-/// 一条待发送附件：本地预览（bytes）+ 后台上传出来的 attachment。
-class _PendingItem {
-  _PendingItem({
-    required this.name,
-    required this.bytes,
-    required this.isImage,
-    required this.isVoice,
-  });
-
-  final String name;
-  final Uint8List? bytes;
-  final bool isImage;
-  final bool isVoice;
-  Attachment? attachment;
-
-  bool get ready => attachment != null;
 }

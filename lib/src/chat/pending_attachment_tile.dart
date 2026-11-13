@@ -2,8 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../models.dart';
-import '../theme.dart';
+import 'package:dsh_chat/src/core/models.dart';
+import 'package:dsh_chat/src/core/theme.dart';
 import 'message_bubble.dart';
 
 /// 一条待发送附件：本地预览（bytes）+ 后台上传出来的 attachment。

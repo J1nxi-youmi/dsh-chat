@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../profile.dart';
-import '../../theme.dart';
+import 'package:dsh_chat/src/core/profile.dart';
+import 'package:dsh_chat/src/core/theme.dart';
 import 'settings_widgets.dart';
 
 class MobileSettingsView extends StatelessWidget {

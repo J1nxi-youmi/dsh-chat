@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:dsh_chat/src/models.dart';
-import 'package:dsh_chat/src/profile.dart';
+import 'package:dsh_chat/src/core/models.dart';
+import 'package:dsh_chat/src/core/profile.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../theme.dart';
+import 'package:dsh_chat/src/core/theme.dart';
 
 class SettingsCard extends StatelessWidget {
   const SettingsCard({super.key, required this.children});

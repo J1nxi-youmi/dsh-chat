@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-import '../api.dart';
-import '../profile.dart';
-import '../theme.dart';
+import 'package:dsh_chat/src/core/api.dart';
+import 'package:dsh_chat/src/core/profile.dart';
+import 'package:dsh_chat/src/core/theme.dart';
 
 /// 「我的资料」：点头像换图、改昵称，只保存在这台设备上。
 /// 桌面端从左上角头像打开；手机端在设置页打开。

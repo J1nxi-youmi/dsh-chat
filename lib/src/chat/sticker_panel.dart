@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../models.dart';
-import '../profile.dart';
-import '../theme.dart';
+import 'package:dsh_chat/src/core/models.dart';
+import 'package:dsh_chat/src/core/profile.dart';
+import 'package:dsh_chat/src/core/theme.dart';
 
 /// 表情包面板：最近 / 我的表情包 / 表情 三个标签，支持搜索、管理和添加。
 class StickerPanel extends StatefulWidget {

@@ -9,9 +9,9 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../models.dart';
-import '../profile.dart';
-import '../theme.dart';
+import 'package:dsh_chat/src/core/models.dart';
+import 'package:dsh_chat/src/core/profile.dart';
+import 'package:dsh_chat/src/core/theme.dart';
 
 final _linkPattern = RegExp('https?://[^\\s<>\'"]+');
 

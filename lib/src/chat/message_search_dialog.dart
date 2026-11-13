@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../models.dart';
-import '../theme.dart';
+import 'package:dsh_chat/src/core/models.dart';
+import 'package:dsh_chat/src/core/theme.dart';
 
 /// 当前会话内的本地消息搜索：只过滤已经加载到界面的消息。
 class MessageSearchDialog extends StatefulWidget {

@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../api.dart';
-import '../session.dart';
-import '../theme.dart';
+import 'package:dsh_chat/src/core/api.dart';
+import 'package:dsh_chat/src/core/session.dart';
+import 'package:dsh_chat/src/core/theme.dart';
 import 'conversations_screen.dart';
 import 'desktop_home.dart';
 

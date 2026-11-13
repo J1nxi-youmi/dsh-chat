@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
-import '../models.dart';
-import '../theme.dart';
+import 'package:dsh_chat/src/core/models.dart';
+import 'package:dsh_chat/src/core/theme.dart';
 import 'message_bubble.dart';
 
 /// 聊天消息列表：反向布局，index 0 是底部锚点。

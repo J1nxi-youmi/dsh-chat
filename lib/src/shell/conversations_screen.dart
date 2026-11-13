@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../api.dart';
-import '../profile.dart';
-import '../models.dart';
-import '../theme.dart';
-import 'chat_screen.dart';
-import 'profile_dialog.dart';
-import 'settings_screen.dart';
+import 'package:dsh_chat/src/core/api.dart';
+import 'package:dsh_chat/src/core/profile.dart';
+import 'package:dsh_chat/src/core/models.dart';
+import 'package:dsh_chat/src/core/theme.dart';
+import '../chat/chat_screen.dart';
+import '../settings/profile_dialog.dart';
+import '../settings/settings_screen.dart';
 
 class ConversationsScreen extends StatefulWidget {
   const ConversationsScreen({

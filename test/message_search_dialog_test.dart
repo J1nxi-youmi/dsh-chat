@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:dsh_chat/src/models.dart';
-import 'package:dsh_chat/src/widgets/message_search_dialog.dart';
+import 'package:dsh_chat/src/core/models.dart';
+import 'package:dsh_chat/src/chat/message_search_dialog.dart';
 
 void main() {
   testWidgets('点击搜索结果会返回对应消息，并使用当前会话名称', (tester) async {

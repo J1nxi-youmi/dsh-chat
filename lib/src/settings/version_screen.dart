@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../theme.dart';
-import '../update.dart';
+import 'package:dsh_chat/src/core/theme.dart';
+import 'package:dsh_chat/src/core/update.dart';
 
 /// 版本详情页：只有打开这一页才会去查更新，发现新版本才弹窗。
 class VersionScreen extends StatefulWidget {

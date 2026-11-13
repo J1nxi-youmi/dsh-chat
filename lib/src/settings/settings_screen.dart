@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../api.dart';
-import '../theme.dart';
-import '../update.dart';
-import 'connect_screen.dart';
+import 'package:dsh_chat/src/core/api.dart';
+import 'package:dsh_chat/src/core/theme.dart';
+import 'package:dsh_chat/src/core/update.dart';
+import '../shell/connect_screen.dart';
+import 'desktop_settings_view.dart';
+import 'mobile_settings_view.dart';
 import 'profile_dialog.dart';
 import 'version_screen.dart';
-import 'settings/desktop_settings_view.dart';
-import 'settings/mobile_settings_view.dart';
 
 /// 设置页只负责状态和业务动作；桌面分栏/手机分组各自在独立视图里。
 class SettingsScreen extends StatefulWidget {

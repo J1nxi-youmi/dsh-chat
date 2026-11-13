@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'src/api.dart';
-import 'src/notify.dart';
-import 'src/screens/connect_screen.dart';
-import 'src/screens/conversations_screen.dart';
-import 'src/screens/desktop_home.dart';
-import 'src/profile.dart';
-import 'src/session.dart';
-import 'src/theme.dart';
+import 'src/core/api.dart';
+import 'src/core/notify.dart';
+import 'src/core/profile.dart';
+import 'src/core/session.dart';
+import 'src/core/theme.dart';
+import 'src/shell/connect_screen.dart';
+import 'src/shell/conversations_screen.dart';
+import 'src/shell/desktop_home.dart';
 
 bool get _isDesktopPlatform =>
     Platform.isWindows || Platform.isLinux || Platform.isMacOS;

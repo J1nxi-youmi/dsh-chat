@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
-import '../api.dart';
-import '../models.dart';
-import '../profile.dart';
-import '../theme.dart';
-import 'chat_screen.dart';
-import 'profile_dialog.dart';
-import 'settings_screen.dart';
+import 'package:dsh_chat/src/core/api.dart';
+import 'package:dsh_chat/src/core/models.dart';
+import 'package:dsh_chat/src/core/profile.dart';
+import 'package:dsh_chat/src/core/theme.dart';
+import '../chat/chat_screen.dart';
+import '../settings/profile_dialog.dart';
+import '../settings/settings_screen.dart';
 
 /// 桌面端：会话列表 + 右侧聊天，青屿陪伴版的双栏布局。
 class DesktopHome extends StatefulWidget {

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:dsh_chat/src/update.dart';
+import 'package:dsh_chat/src/core/update.dart';
 
 void main() {
   test('release 只显示 v1.2.2，构建号藏在注释里', () {

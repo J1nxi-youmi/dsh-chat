@@ -1161,6 +1161,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 ),
               ),
             ),
+            if (_isDesktop)
+              const Padding(
+                padding: EdgeInsets.only(top: 7),
+                child: Text(
+                  '支持粘贴图片、拖入文件与按住说话',
+                  style: TextStyle(fontSize: 9, color: AppTheme.muted),
+                ),
+              ),
           ],
         ),
       ),
@@ -1314,36 +1322,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Widget _sendButton() {
     final enabled = _canSend && !_sending;
-    return Material(
-      color: enabled ? AppTheme.accent : AppTheme.panelAlt,
-      borderRadius: BorderRadius.circular(9),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(9),
-        onTap: enabled ? _send : null,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: _isDesktop ? 12 : 10,
-            vertical: 6,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_isDesktop)
-                Text(
-                  '发送',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: enabled ? Colors.white : AppTheme.muted,
-                  ),
-                ),
-              if (_isDesktop) const SizedBox(width: 4),
-              Icon(
-                _isDesktop ? Icons.send_rounded : Icons.arrow_upward_rounded,
-                size: 14,
-                color: enabled ? Colors.white : AppTheme.muted,
-              ),
-            ],
+    return Tooltip(
+      message: '发送',
+      child: Material(
+        color: enabled ? AppTheme.accent : AppTheme.panelAlt,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: enabled ? _send : null,
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(
+              Icons.arrow_upward_rounded,
+              size: 18,
+              color: enabled ? Colors.white : AppTheme.muted,
+            ),
           ),
         ),
       ),

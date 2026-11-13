@@ -266,6 +266,16 @@ class _DesktopHomeState extends State<DesktopHome> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
+                        'YOUR SPACE',
+                        style: TextStyle(
+                          fontSize: 8,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      const Text(
                         '消息',
                         style: TextStyle(
                           fontSize: 19,
@@ -377,6 +387,26 @@ class _DesktopHomeState extends State<DesktopHome> {
                 ),
               ),
               style: const TextStyle(fontSize: 13),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
+            child: Row(
+              children: [
+                const Text(
+                  '最近会话',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.muted,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${_filtered.length}',
+                  style: const TextStyle(fontSize: 9, color: AppTheme.muted),
+                ),
+              ],
             ),
           ),
           Expanded(child: _conversationList()),

@@ -210,25 +210,36 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: TextField(
-                controller: _search,
-                onChanged: (value) => setState(() => _query = value),
-                style: const TextStyle(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: '搜索会话',
-                  isDense: true,
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    size: 18,
-                    color: AppTheme.muted,
+              child: SizedBox(
+                height: 42,
+                child: TextField(
+                  controller: _search,
+                  onChanged: (value) => setState(() => _query = value),
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: '搜索会话',
+                    isDense: true,
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      size: 18,
+                      color: AppTheme.muted,
+                    ),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 42,
+                      minHeight: 0,
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.panel,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.line),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.line),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   ),
-                  filled: true,
-                  fillColor: AppTheme.panelAlt,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 ),
               ),
             ),

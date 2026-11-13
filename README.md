@@ -1,16 +1,31 @@
 # Dshchat
 
-连任意一台 DSH 的原生聊天客户端。**Flutter 一套代码，Android + Windows。**
+连接任意一台 DSH 的原生聊天客户端。**Flutter 一套代码，Android + Windows。**
+
+界面是 **青屿 · 陪伴版**：暖白底色、鼠尾草绿、双方头像和轻松气泡。  
+按 **70% 日常闲聊、30% 远程协作** 来设计——聊天要自然，文件、图片、语音、搜索和服务器管理也一个不少。
+
 后端是任意一台装着 `dsh-plugin-chat` 的 DSH（手机本机引擎也行，电脑也行）。
+
+## 界面预览
+
+![青屿陪伴版桌面端](assets/screenshots/companion-desktop.png)
+
+![青屿陪伴版子界面](assets/screenshots/companion-subscreens.png)
+
+> 预览包含 Windows 双栏主界面与 Android 聊天页；子界面覆盖设置、连接、个人资料、版本更新、图片预览和输入状态。
 
 ## 核心能力
 
+- **青屿主题**：暖白底、鼠尾草绿、轻柔阅读排版；桌面双栏、手机单栏，共享同一套组件
+- **双方头像与方向气泡**：对方左侧、自己右侧；文字气泡朝向头像，图片/文件/语音使用独立圆角卡片
 - **消息**：文字、图片、链接、语音、文件双向收发；`seq` + 幂等发送 + 断线增量补拉，可靠投递
+- **聊天交互**：图片点击全屏预览、长按/右键复制文字、会话列表 `Ctrl + K` 聚焦搜索、当前会话消息搜索
+- **输入区**：统一 `＋` 附件入口、按住说话、表情面板、自动换行；桌面端拖入文件、`Ctrl + V` 粘贴
 - **我的资料云同步**：昵称 + 头像存服务器，所有设备自动一致
-- **App 内热更新**：设置 → 版本 → 下载并安装（带进度条；GitHub 直连超时自动走 DSH 隧道代理下载）
-- **真实连接状态**：状态栏显示实时延迟（定时 ping `/healthz`）
-- **桌面端**：三栏布局、文件拖入、Ctrl+V 粘贴图片/文件、Enter 发送
-- **手机端**：按住说话、会话搜索、深色星空主题
+- **设置页**：桌面分栏 / 手机分组；服务器、个人资料、版本与更新、更新源、切换 DSH
+- **App 内更新**：设置 → 版本 → 下载并安装（带进度条；GitHub 直连超时自动走 DSH 隧道代理下载）
+- **真实连接状态**：显示实时延迟（定时 ping `/healthz`），断线自动重连
 - **上传上限**：默认 96MB，跟随服务端配置
 - **应用名/图标**：Dshchat
 
@@ -27,18 +42,21 @@
 > 安装包用固定的 keystore 签名（`tool/android/dsh-chat.jks`），所以 Android 以后可以直接覆盖安装；
 > 第一次从旧版本（debug 签名）换过来需要先卸载一次。
 
-## 长什么样（桌面端）
+## 桌面端体验
 
-- 三栏：图标栏 + 会话列表（搜索 / 预览 / 时间）+ 聊天区
+- **双栏布局**：左侧会话列表（头像 / 筛选 / 预览 / 时间），右侧居中对话区
+- 初始窗口 980×660，最小 780×560
+- 会话搜索支持 `Ctrl + K` 聚焦、`Esc` 清空
 - Enter 发送，Shift + Enter 换行
 - 文件直接拖进聊天框；Ctrl+V 粘贴图片或文件
-- 语音按住说话，松开发送，上滑取消
+- 图片点击全屏预览；语音显示波形，按住说话、松开发送、上滑取消
 
-## 长什么样（手机端）
+## 手机端体验
 
-- 深色主题，会话列表 + 气泡对话
-- 图片点开大图，链接点开浏览器，文件点开系统程序
-- 语音按住说话、点气泡播放
+- 同一套青屿暖白主题：会话列表 + 气泡对话 + 分组设置
+- 头像进入「我的资料」；顶栏搜索会话
+- 图片点开大图，链接点开浏览器，文件交给系统程序
+- 输入区：`＋` 选择图片/文件、表情面板、按住说话、圆形发送键
 - 断线自动重连（SSE），回复一条条冒出来
 
 ## 自己构建（不用装 Android SDK / Visual Studio）
@@ -66,7 +84,7 @@ App 第一次打开会要两样东西：
 
 - 同一 WiFi：直接填内网 IP；
 - 跨网：填中转给的地址（配了 `relayUrl` 的话），或者固定域名的隧道地址。
-- 换机器：列表右上角「换一台 DSH」，重新填即可。
+- 换机器：设置页「换一台 DSH」，重新填即可。
 
 ## 后端要做什么
 
@@ -86,18 +104,23 @@ App 第一次打开会要两样东西：
 
 ```
 lib/
-  main.dart                    入口、启动时读上次连接
+  main.dart                        入口、启动时读上次连接
   src/
-    api.dart                   HTTP + SSE 客户端，断线重连
-    models.dart                会话/消息/附件
-    theme.dart                 配色和小组件
-    screens/connect_screen.dart      填地址和令牌
-    screens/conversations_screen.dart 会话列表
-    screens/chat_screen.dart         对话、发消息、录音、选文件
-    widgets/message_bubble.dart      气泡：文字/链接/图片/语音/文件
-tool/patch_android.sh           CI 里补权限和明文 HTTP
-tool/patch_windows.ps1          CI 里给生成的 CMakeLists 加 MSVC 兼容宏
-.github/workflows/build.yml     出 APK
+    api.dart                       HTTP + SSE 客户端，断线重连
+    models.dart                    会话/消息/附件
+    theme.dart                     青屿配色、背景、头像与通用组件
+    screens/connect_screen.dart          填地址和令牌
+    screens/conversations_screen.dart    手机会话列表
+    screens/desktop_home.dart            Windows 双栏主界面
+    screens/chat_screen.dart             对话、发消息、录音、选文件、表情
+    screens/settings_screen.dart         设置：桌面分栏 / 手机分组
+    screens/version_screen.dart          版本与更新
+    widgets/message_bubble.dart          气泡：文字/链接/图片/语音/文件
+    widgets/message_search_dialog.dart   当前会话消息搜索
+  assets/screenshots/                    青屿界面预览
+tool/patch_android.sh             CI 里补权限和明文 HTTP
+tool/patch_windows.ps1            CI 里给生成的 CMakeLists 加 MSVC 兼容宏
+.github/workflows/build.yml       出 APK
 .github/workflows/build-windows.yml  出 Windows 包
 ```
 

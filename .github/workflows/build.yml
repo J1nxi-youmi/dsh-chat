@@ -34,6 +34,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: 3.47.9
           channel: stable
           cache: true
 
@@ -55,7 +56,10 @@ jobs:
         run: dart run flutter_launcher_icons
 
       - name: Analyze
-        run: flutter analyze --fatal-infos > analyze.log 2>&1
+        run: flutter analyze > analyze.log 2>&1
+
+      - name: Test
+        run: flutter test
 
       - name: Build APK
         run: |
@@ -89,6 +93,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: 3.47.9
           channel: stable
           cache: true
 

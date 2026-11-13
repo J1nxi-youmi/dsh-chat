@@ -946,6 +946,50 @@ class ChatScreenState extends State<ChatScreen> {
     await prefs.setStringList(_hiddenKey, _hiddenMessageIds.toList());
   }
 
+  Future<void> _transcribeVoice(Message message) async {
+    Attachment? voice;
+    for (final attachment in message.attachments) {
+      if (attachment.isVoice) {
+        voice = attachment;
+        break;
+      }
+    }
+    if (voice == null) {
+      _toast('这条消息没有语音附件');
+      return;
+    }
+    _toast('正在转写语音…');
+    try {
+      final text = await widget.api.transcribe(voice.id);
+      if (!mounted) return;
+      if (text.trim().isEmpty) {
+        _toast('语音转写没有返回内容');
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: AppTheme.panel,
+          title: const Text('语音转文字'),
+          content: SingleChildScrollView(
+            child: SelectableText(
+              text,
+              style: const TextStyle(fontSize: 13, height: 1.6),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+    } catch (error) {
+      if (mounted) _toast('转写失败：$error');
+    }
+  }
+
   Future<void> _shareMessage(Message message) async {
     try {
       final conversations = await widget.api.conversations();
@@ -1042,6 +1086,7 @@ class ChatScreenState extends State<ChatScreen> {
       onReply: _startReply,
       onShare: _shareMessage,
       onDelete: _hideMessage,
+      onTranscribe: _transcribeVoice,
     );
   }
 

@@ -655,6 +655,17 @@ async function handleApi(req, res, url) {
     return json(res, 200, { ok: true, attachment });
   }
 
+  if (req.method === 'POST' && path === '/api/transcribe') {
+    const body = await readJson(req);
+    const id = String(body.id ?? '').trim();
+    const media = db.media[id];
+    if (!media?.diskPath) return fail(res, 404, '找不到这条语音');
+    if (!config.asrCommand) return fail(res, 400, '未配置语音转写命令');
+    const transcript = await transcribeVoice(media.diskPath);
+    if (!transcript) return fail(res, 422, '语音转写没有返回结果');
+    return json(res, 200, { ok: true, text: transcript });
+  }
+
   if (path === '/api/conversations') {
     if (req.method === 'DELETE') {
       const ids = db.conversations.map((item) => item.id);

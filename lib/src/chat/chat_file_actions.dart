@@ -38,6 +38,11 @@ class ChatFileActions {
   }
 
   static Future<String> copy(String url, Attachment attachment) async {
+    if (attachment.isImage) {
+      final data = await _bytes(url);
+      await Pasteboard.writeImage(data);
+      return '已复制图片';
+    }
     if (!_desktop) {
       await Clipboard.setData(ClipboardData(text: url));
       return '已复制文件链接';
@@ -62,13 +67,20 @@ class ChatFileActions {
 
   static Future<String> save(String url, Attachment attachment) async {
     final data = await _bytes(url);
-    Directory? dir;
     if (Platform.isAndroid || Platform.isIOS) {
-      dir = await getApplicationDocumentsDirectory();
-    } else {
-      dir = await getDownloadsDirectory();
+      final uri = await FilePicker.saveFile(
+        fileName: _safeName(attachment.name),
+        bytes: data,
+        mimeType: attachment.mime.isEmpty
+            ? 'application/octet-stream'
+            : attachment.mime,
+      );
+      if (uri == null) return '已取消保存';
+      return '已保存到 ${uri.toString()}';
     }
-    dir ??= await getApplicationDocumentsDirectory();
+    final dir =
+        await getDownloadsDirectory() ??
+        await getApplicationDocumentsDirectory();
     final file = File('${dir.path}/${_safeName(attachment.name)}');
     await file.writeAsBytes(data, flush: true);
     return '已保存到 ${file.path}';

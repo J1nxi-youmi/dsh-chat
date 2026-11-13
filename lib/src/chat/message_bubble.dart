@@ -26,6 +26,7 @@ enum _MessageAction {
   save,
   open,
   openFolder,
+  transcribe,
 }
 
 /// 一条消息：文字（链接可点）、图片、语音、文件。
@@ -40,6 +41,7 @@ class MessageBubble extends StatelessWidget {
     this.onReply,
     this.onShare,
     this.onDelete,
+    this.onTranscribe,
   });
 
   final Message message;
@@ -57,6 +59,7 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onReply;
   final VoidCallback? onShare;
   final VoidCallback? onDelete;
+  final VoidCallback? onTranscribe;
 
   @override
   Widget build(BuildContext context) {
@@ -176,27 +179,49 @@ class MessageBubble extends StatelessWidget {
   /// 长按/右键消息：桌面弹浮动菜单，手机弹底部面板。
   Future<void> _showActions(BuildContext context, Offset position) async {
     final text = message.text.trim();
-    final desktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    final desktop = switch (Theme.of(context).platform) {
+      TargetPlatform.windows ||
+      TargetPlatform.linux ||
+      TargetPlatform.macOS => true,
+      _ => false,
+    };
     Attachment? file;
+    Attachment? image;
+    Attachment? voice;
     for (final attachment in message.attachments) {
-      if (!attachment.isImage && !attachment.isVoice) {
+      if (attachment.isVoice) {
+        voice = attachment;
+      } else if (attachment.isImage) {
+        image = attachment;
+      } else {
         file = attachment;
-        break;
       }
     }
-    final entries = file != null
+    final entries = desktop
         ? <_MessageAction>[
-            if (desktop) _MessageAction.copyFile,
-            _MessageAction.saveAs,
-            _MessageAction.save,
-            _MessageAction.open,
-            if (desktop) _MessageAction.openFolder,
+            if (file != null) ...[
+              _MessageAction.copyFile,
+              _MessageAction.saveAs,
+              _MessageAction.save,
+              _MessageAction.open,
+              _MessageAction.openFolder,
+            ] else ...[
+              if (text.isNotEmpty) _MessageAction.copy,
+              if (onReply != null) _MessageAction.reply,
+              if (onShare != null) _MessageAction.share,
+              if (voice != null && onTranscribe != null)
+                _MessageAction.transcribe,
+            ],
             if (onDelete != null) _MessageAction.delete,
           ]
         : <_MessageAction>[
-            if (text.isNotEmpty) _MessageAction.copy,
-            if (onReply != null) _MessageAction.reply,
-            if (onShare != null) _MessageAction.share,
+            if (voice != null && onTranscribe != null)
+              _MessageAction.transcribe
+            else if (image != null || file != null) ...[
+              _MessageAction.copyFile,
+              _MessageAction.save,
+            ] else if (text.isNotEmpty)
+              _MessageAction.copy,
             if (onDelete != null) _MessageAction.delete,
           ];
     if (entries.isEmpty) return;
@@ -223,12 +248,16 @@ class MessageBubble extends StatelessWidget {
       case _MessageAction.delete:
         onDelete?.call();
         break;
+      case _MessageAction.transcribe:
+        onTranscribe?.call();
+        break;
       case _MessageAction.copyFile:
       case _MessageAction.saveAs:
       case _MessageAction.save:
       case _MessageAction.open:
       case _MessageAction.openFolder:
-        await _runFileAction(context, file!, action);
+        final target = file ?? image;
+        if (target != null) await _runFileAction(context, target, action);
         break;
     }
   }
@@ -304,36 +333,55 @@ class MessageBubble extends StatelessWidget {
   ) {
     return showModalBottomSheet<_MessageAction>(
       context: context,
-      backgroundColor: AppTheme.panel,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.16),
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final action in entries)
-              ListTile(
-                leading: Icon(
-                  _actionIcon(action),
-                  color: action == _MessageAction.delete
-                      ? AppTheme.error
-                      : AppTheme.accent,
-                  size: 20,
-                ),
-                title: Text(
-                  _actionLabel(action),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: action == _MessageAction.delete
-                        ? AppTheme.error
-                        : AppTheme.text,
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFF303438),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.24),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              for (final action in entries)
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => Navigator.of(sheetContext).pop(action),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _actionIcon(action),
+                            size: 22,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            _actionLabel(action),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                onTap: () => Navigator.of(sheetContext).pop(action),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -366,6 +414,7 @@ class MessageBubble extends StatelessWidget {
       _MessageAction.save => Icons.download_rounded,
       _MessageAction.open => Icons.open_in_new_rounded,
       _MessageAction.openFolder => Icons.folder_open_rounded,
+      _MessageAction.transcribe => Icons.text_fields_rounded,
     };
   }
 
@@ -380,6 +429,7 @@ class MessageBubble extends StatelessWidget {
       _MessageAction.save => '保存',
       _MessageAction.open => '打开',
       _MessageAction.openFolder => '打开文件夹',
+      _MessageAction.transcribe => '转文字',
     };
   }
 

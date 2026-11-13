@@ -156,6 +156,11 @@ class ChatApi {
         .toList();
   }
 
+  Future<String> transcribe(String attachmentId) async {
+    final data = await _send('POST', '/api/transcribe', {'id': attachmentId});
+    return data['text']?.toString() ?? '';
+  }
+
   /// 上传附件；voice 的话带上时长（秒）。
   Future<Attachment> upload({
     required String name,

@@ -22,6 +22,7 @@ class ChatMessageList extends StatelessWidget {
     required this.onReply,
     required this.onShare,
     required this.onDelete,
+    required this.onTranscribe,
   });
 
   final List<Message> messages;
@@ -36,6 +37,7 @@ class ChatMessageList extends StatelessWidget {
   final ValueChanged<Message> onReply;
   final ValueChanged<Message> onShare;
   final ValueChanged<Message> onDelete;
+  final ValueChanged<Message> onTranscribe;
 
   int get _contentCount => messages.length + outbox.length + (sending ? 1 : 0);
 
@@ -66,6 +68,7 @@ class ChatMessageList extends StatelessWidget {
                 onReply: () => onReply(message),
                 onShare: () => onShare(message),
                 onDelete: () => onDelete(message),
+                onTranscribe: () => onTranscribe(message),
               );
               return _needsDivider(contentIndex)
                   ? Column(children: [_timeDivider(message.at), bubble])

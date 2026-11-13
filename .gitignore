@@ -19,6 +19,8 @@ windows.log
 
 # 本地设计稿（含预览 HTML / 渲染脚本，不进构建）
 /design/
+# 由 tool/make_windows_icon.py 生成，仓库只保留 ICO
+/tool/app_icon_rounded.png
 
 # 编辑器
 .idea/

@@ -39,6 +39,8 @@ Name: "quicklaunchicon"; Description: "创建快速启动栏图标"; GroupDescri
 
 [Files]
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+; 版本化文件名，避免 Windows 图标缓存继续显示旧方角图标。
+Source: "..\tool\app_icon.ico"; DestDir: "{app}"; DestName: "app_icon-{#AppVersion}.ico"; Flags: ignoreversion
 
 [InstallDelete]
 ; 升级安装时清掉旧版本留下的 dsh-chat / Dshchat 快捷方式，避免和青屿并存。
@@ -48,12 +50,13 @@ Type: files; Name: "{commonprograms}\Dshchat\dsh-chat.lnk"
 Type: files; Name: "{commonprograms}\Dshchat\卸载 dsh-chat.lnk"
 Type: files; Name: "{commonprograms}\Dshchat\Dshchat.lnk"
 Type: files; Name: "{commonprograms}\Dshchat\卸载 Dshchat.lnk"
+Type: files; Name: "{app}\app_icon-*.ico"
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\app_icon-{#AppVersion}.ico"
 Name: "{group}\卸载 {#AppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: quicklaunchicon
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\app_icon-{#AppVersion}.ico"; Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\app_icon-{#AppVersion}.ico"; Tasks: quicklaunchicon
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "启动 {#AppName}"; Flags: nowait postinstall skipifsilent

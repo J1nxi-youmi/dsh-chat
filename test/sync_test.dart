@@ -40,4 +40,12 @@ void main() {
 
     expect(AppProfile.instance.stickers, hasLength(1));
   });
+
+  test('删除表情包会写入本地空列表', () async {
+    await AppProfile.instance.saveStickers([]);
+
+    expect(AppProfile.instance.stickers, isEmpty);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('profile.stickers'), '[]');
+  });
 }

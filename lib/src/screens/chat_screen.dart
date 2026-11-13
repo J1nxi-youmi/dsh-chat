@@ -1521,72 +1521,136 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     if (emoji != null) _insertEmoji(emoji);
   }
 
+  Future<void> _deleteSticker(Attachment sticker) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.panel,
+        title: const Text('删除表情包'),
+        content: Text('从云端移除「${sticker.name}」？另一台设备也会同步删除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('删除', style: TextStyle(color: AppTheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final next = AppProfile.instance.stickers
+        .where((item) => item.id != sticker.id)
+        .toList();
+    try {
+      await widget.api.saveStickers(next);
+      await AppProfile.instance.saveStickers(next);
+      if (mounted) _toast('表情包已删除，另一端会自动同步');
+    } catch (error) {
+      if (mounted) _toast('删除失败：$error');
+    }
+  }
+
   Widget _emojiPanelContent(
     BuildContext panelContext,
     void Function(String) onEmoji,
   ) {
-    return AnimatedBuilder(
-      animation: AppProfile.instance,
-      builder: (context, _) {
-        final stickers = AppProfile.instance.stickers;
-        return ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            _emojiGrid(onEmoji),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Text(
-                  '我的表情包',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.text,
-                  ),
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _addStickers,
-                  icon: const Icon(Icons.add_rounded, size: 15),
-                  label: const Text('添加表情包', style: TextStyle(fontSize: 9)),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.accent,
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                ),
-              ],
-            ),
-            if (stickers.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.panelAlt,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.line),
-                ),
-                child: const Text(
-                  '还没有自定义表情包，添加后会自动同步到另一台设备。',
-                  style: TextStyle(fontSize: 9, color: AppTheme.muted),
-                ),
-              )
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+    var managing = false;
+    return StatefulBuilder(
+      builder: (panelStateContext, setPanelState) => AnimatedBuilder(
+        animation: AppProfile.instance,
+        builder: (context, _) {
+          final stickers = AppProfile.instance.stickers;
+          return ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              _emojiGrid(onEmoji),
+              const SizedBox(height: 10),
+              Row(
                 children: [
-                  for (final sticker in stickers)
-                    _stickerTile(panelContext, sticker),
+                  const Text(
+                    '我的表情包',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.text,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (stickers.isNotEmpty)
+                    TextButton(
+                      onPressed: () =>
+                          setPanelState(() => managing = !managing),
+                      style: TextButton.styleFrom(
+                        foregroundColor: managing
+                            ? AppTheme.accent
+                            : AppTheme.muted,
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                      ),
+                      child: Text(
+                        managing ? '完成' : '管理',
+                        style: const TextStyle(fontSize: 9),
+                      ),
+                    ),
+                  TextButton.icon(
+                    onPressed: _addStickers,
+                    icon: const Icon(Icons.add_rounded, size: 15),
+                    label: const Text('添加表情包', style: TextStyle(fontSize: 9)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.accent,
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                    ),
+                  ),
                 ],
               ),
-            const SizedBox(height: 8),
-          ],
-        );
-      },
+              if (managing && stickers.isNotEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 7),
+                  child: Text(
+                    '点右上角 × 删除，删除后会同步到另一台设备。',
+                    style: TextStyle(fontSize: 8, color: AppTheme.muted),
+                  ),
+                ),
+              if (stickers.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.panelAlt,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppTheme.line),
+                  ),
+                  child: const Text(
+                    '还没有自定义表情包，添加后会自动同步到另一台设备。',
+                    style: TextStyle(fontSize: 9, color: AppTheme.muted),
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final sticker in stickers)
+                      _stickerTile(
+                        panelContext,
+                        sticker,
+                        managing: managing,
+                        onDelete: () => _deleteSticker(sticker),
+                      ),
+                  ],
+                ),
+              const SizedBox(height: 8),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -1615,34 +1679,67 @@ class ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _stickerTile(BuildContext panelContext, Attachment sticker) {
-    return Material(
-      color: AppTheme.panelAlt,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          Navigator.of(panelContext).pop();
-          unawaited(_sendSticker(sticker));
-        },
-        child: Container(
-          width: 52,
-          height: 52,
-          padding: const EdgeInsets.all(4),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              widget.api.mediaUrl(sticker.url),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.broken_image_outlined,
-                size: 20,
-                color: AppTheme.muted,
+  Widget _stickerTile(
+    BuildContext panelContext,
+    Attachment sticker, {
+    required bool managing,
+    required VoidCallback onDelete,
+  }) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: AppTheme.panelAlt,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: managing
+                ? null
+                : () {
+                    Navigator.of(panelContext).pop();
+                    unawaited(_sendSticker(sticker));
+                  },
+            child: Container(
+              width: 52,
+              height: 52,
+              padding: const EdgeInsets.all(4),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  widget.api.mediaUrl(sticker.url),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.broken_image_outlined,
+                    size: 20,
+                    color: AppTheme.muted,
+                  ),
+                ),
               ),
             ),
           ),
         ),
-      ),
+        if (managing)
+          Positioned(
+            right: -5,
+            top: -5,
+            child: GestureDetector(
+              onTap: onDelete,
+              child: Container(
+                width: 19,
+                height: 19,
+                decoration: const BoxDecoration(
+                  color: AppTheme.error,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  size: 12,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 

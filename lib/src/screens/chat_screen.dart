@@ -1266,6 +1266,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _showEmojiPicker() async {
+    // 面板高度随窗口收缩，但内部保留滚动，避免小窗口截断最后一行。
+    final panelHeight = (MediaQuery.sizeOf(context).height * 0.58)
+        .clamp(260.0, 330.0)
+        .toDouble();
     String? emoji;
     if (_isDesktop) {
       emoji = await showDialog<String>(
@@ -1278,12 +1282,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             borderRadius: BorderRadius.circular(18),
             side: const BorderSide(color: AppTheme.line),
           ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
+          child: SizedBox(
+            width: 360,
+            height: panelHeight,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -1309,7 +1313,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  _emojiGrid((value) => Navigator.of(dialogContext).pop(value)),
+                  Expanded(
+                    child: _emojiGrid(
+                      (value) => Navigator.of(dialogContext).pop(value),
+                      scrollable: true,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1325,28 +1334,33 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         ),
         builder: (sheetContext) => SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '表情',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.text,
+          child: SizedBox(
+            height: panelHeight,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '表情',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.text,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _emojiGrid(
-                      (value) => Navigator.of(sheetContext).pop(value),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: _emojiGrid(
+                          (value) => Navigator.of(sheetContext).pop(value),
+                          scrollable: true,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1357,11 +1371,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     if (emoji != null) _insertEmoji(emoji);
   }
 
-  Widget _emojiGrid(void Function(String) onPick) {
+  Widget _emojiGrid(void Function(String) onPick, {bool scrollable = false}) {
     return GridView.count(
       crossAxisCount: 8,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: !scrollable,
+      physics: scrollable
+          ? const ClampingScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 6,
       crossAxisSpacing: 6,
       childAspectRatio: 1,

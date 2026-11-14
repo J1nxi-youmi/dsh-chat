@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-chat",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "description": "聊天 App 的后端：网页聊天端（左下角 ⚙ 是设置页，可改系统提示词、上传上限等）+ HTTP API；自带跑 DSH 会话的 OpenAI 兼容桥，不用再单独装 starlit-bridge；配置里的 sessionKey / sessionId 可以指定所有聊天写进哪条会话。",
   "type": "module",
@@ -20,7 +20,8 @@
   "scripts": {
     "test": "node test/reliability.mjs",
     "test:e2e": "node test/e2e/web-e2e.mjs",
-    "test:queue": "node test/session-queue.test.mjs"
+    "test:queue": "node test/session-queue.test.mjs",
+    "test:turns": "node test/turns.mjs"
   },
   "license": "MIT",
   "dsh": {

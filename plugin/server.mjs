@@ -102,11 +102,25 @@ const db = {
     }
   },
   saving: Promise.resolve(),
+  dirty: false,
+  /**
+   * 落盘攒一攒再写：以前每来一条消息就把整份 db 序列化一次，
+   * 一轮回复拆几个气泡就写几次，消息多了越来越慢。
+   * 现在只有真改过才写，快照也放到真正写之前才取，短时间的多次改动合并成一次。
+   */
   save() {
-    const snapshot = JSON.stringify({ conversations: this.conversations, media: this.media });
-    this.saving = this.saving
-      .then(() => writeFile(join(config.dataDir, 'db.json'), snapshot, 'utf8'))
-      .catch((error) => console.error('[chat] 保存失败', error));
+    this.dirty = true;
+    this.saving = this.saving.then(async () => {
+      if (!this.dirty) return;
+      this.dirty = false;
+      const snapshot = JSON.stringify({ conversations: this.conversations, media: this.media });
+      try {
+        await writeFile(join(config.dataDir, 'db.json'), snapshot, 'utf8');
+      } catch (error) {
+        this.dirty = true;
+        console.error('[chat] 保存失败', error);
+      }
+    });
     return this.saving;
   },
 };
@@ -234,31 +248,30 @@ function htmlToText(html) {
 async function readLinks(text) {
   const urls = extractUrls(text);
   if (urls.length === 0) return '';
-  const notes = [];
-  for (const url of urls) {
-    try {
-      const response = await fetch(url, {
-        headers: { accept: 'text/html,text/plain;q=0.9,*/*;q=0.5', 'user-agent': 'dsh-chat/0.1' },
-        redirect: 'follow',
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!response.ok) {
-        notes.push(`（链接 ${url} 打不开：HTTP ${response.status}）`);
-        continue;
+  // 两个链接一起抓：最坏等 8 秒，而不是一个接一个等 16 秒。
+  const notes = await Promise.all(
+    urls.map(async (url) => {
+      try {
+        const response = await fetch(url, {
+          headers: { accept: 'text/html,text/plain;q=0.9,*/*;q=0.5', 'user-agent': 'dsh-chat/0.1' },
+          redirect: 'follow',
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!response.ok) {
+          return `（链接 ${url} 打不开：HTTP ${response.status}）`;
+        }
+        const type = response.headers.get('content-type') ?? '';
+        const raw = (await response.text()).slice(0, 512 * 1024);
+        const { title, body } = type.includes('text/plain')
+          ? { title: '', body: raw.replace(/\s+/g, ' ').trim() }
+          : htmlToText(raw);
+        const excerpt = body.slice(0, 3000);
+        return `【用户发来的链接】${url}\n标题：${title || '（无）'}\n正文摘录：\n${excerpt}${body.length > excerpt.length ? '\n…（以下省略）' : ''}`;
+      } catch (error) {
+        return `（链接 ${url} 读取失败：${error?.message ?? error}）`;
       }
-      const type = response.headers.get('content-type') ?? '';
-      const raw = (await response.text()).slice(0, 512 * 1024);
-      const { title, body } = type.includes('text/plain')
-        ? { title: '', body: raw.replace(/\s+/g, ' ').trim() }
-        : htmlToText(raw);
-      const excerpt = body.slice(0, 3000);
-      notes.push(
-        `【用户发来的链接】${url}\n标题：${title || '（无）'}\n正文摘录：\n${excerpt}${body.length > excerpt.length ? '\n…（以下省略）' : ''}`,
-      );
-    } catch (error) {
-      notes.push(`（链接 ${url} 读取失败：${error?.message ?? error}）`);
-    }
-  }
+    }),
+  );
   return notes.join('\n\n');
 }
 
@@ -369,9 +382,10 @@ const summarize = (conversation) => ({
  * seq 是「增量拉取 + 断线重连」的游标，客户端只记 lastSeq 就够了。
  */
 function appendMessage(conversation, message) {
-  let maxSeq = Number(conversation.seq) || 0;
-  for (const item of conversation.messages) maxSeq = Math.max(maxSeq, Number(item.seq) || 0);
-  const stored = { ...message, seq: maxSeq + 1 };
+  // seq 是单调游标：会话上记着上一个，直接 +1 就够，不用每条都扫一遍全表。
+  const last = conversation.messages.at(-1);
+  const base = Math.max(Number(conversation.seq) || 0, Number(last?.seq) || 0);
+  const stored = { ...message, seq: base + 1 };
   conversation.messages.push(stored);
   conversation.seq = stored.seq;
   conversation.updatedAt = stored.at;
@@ -391,6 +405,27 @@ function repliesAfter(conversation, seq) {
 
 /** 正在生成的用户消息 id：同一 clientMessageId 重复重发时不再触发第二次模型调用。 */
 const inFlight = new Set();
+
+/**
+ * 每个会话一条回合队列：同一条会话的消息按发出的顺序跑，
+ * 不同会话各跑各的（以前同会话连发两条会并行，回复交错、历史也对不上）。
+ */
+const turnQueues = new Map();
+
+/** 把这一轮排进它所属会话的队列，等前面的跑完再跑。 */
+function enqueueTurn(conversation, userMessage) {
+  const previous = turnQueues.get(conversation.id) ?? Promise.resolve();
+  const run = previous.then(() => runTurn(conversation, userMessage));
+  const settled = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  turnQueues.set(conversation.id, settled);
+  settled.then(() => {
+    if (turnQueues.get(conversation.id) === settled) turnQueues.delete(conversation.id);
+  });
+  return run;
+}
 
 /** 跑一轮：拿历史 → 调上游 → 拆气泡 → 落库 → 广播。 */
 async function runTurn(conversation, userMessage) {
@@ -779,7 +814,7 @@ async function handleApi(req, res, url) {
         // 上次生成失败了：复用这条用户消息，重新跑一轮。
         inFlight.add(existing.id);
         try {
-          const replies = await runTurn(conversation, existing);
+          const replies = await enqueueTurn(conversation, existing);
           return json(res, 200, {
             ok: true,
             retried: true,
@@ -823,7 +858,7 @@ async function handleApi(req, res, url) {
     const ack = { clientMessageId, seq: userMessage.seq, id: userMessage.id };
     inFlight.add(userMessage.id);
     try {
-      const replies = await runTurn(conversation, userMessage);
+      const replies = await enqueueTurn(conversation, userMessage);
       return json(res, 200, {
         ok: true,
         ack,

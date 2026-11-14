@@ -236,7 +236,7 @@ class MessageBubble extends StatelessWidget {
       child: Text(
         transcribing ? '正在转写…' : transcript!,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: 13,
           height: 1.5,
           color: AppTheme.text,
         ),
@@ -622,9 +622,9 @@ class MessageBubble extends StatelessWidget {
       TextSpan(
         style: const TextStyle(
           color: AppTheme.text,
-          // Windows 上用思源黑体 Medium（theme.dart 里只对 Windows 生效），
-          // 字本身比雅黑粗一档，17px 就够清楚；再大就不像聊天软件了。
-          fontSize: 17,
+          // 14px + 思源黑体 Medium（theme.dart 里只对 Windows 生效）：字号跟 QQ/微信一个量级，
+          // 字本身比雅黑粗一档，小字号也不会发虚。
+          fontSize: 14,
           height: 1.5,
         ),
         children: spans,

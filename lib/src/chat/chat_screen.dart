@@ -1132,7 +1132,7 @@ class ChatScreenState extends State<ChatScreen> {
                             maxLines: 5,
                             textInputAction: TextInputAction.newline,
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 14,
                               height: 1.5,
                               color: AppTheme.text,
                             ),

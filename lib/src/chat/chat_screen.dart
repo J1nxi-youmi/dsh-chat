@@ -17,6 +17,7 @@ import 'package:dsh_chat/src/core/image_utils.dart';
 import 'package:dsh_chat/src/core/models.dart';
 import 'package:dsh_chat/src/core/profile.dart';
 import 'package:dsh_chat/src/core/theme.dart';
+import 'package:dsh_chat/src/core/typography.dart';
 import 'controllers/chat_scroll_controller.dart';
 import 'widgets/chat_message_list.dart';
 import 'widgets/message_search_dialog.dart';
@@ -1131,11 +1132,7 @@ class ChatScreenState extends State<ChatScreen> {
                             minLines: 1,
                             maxLines: 5,
                             textInputAction: TextInputAction.newline,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              height: 1.5,
-                              color: AppTheme.text,
-                            ),
+                            style: AppText.input,
                             decoration: InputDecoration(
                               hintText: _recording ? '录音中…' : '',
                               isDense: true,

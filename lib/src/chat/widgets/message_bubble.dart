@@ -13,6 +13,7 @@ import 'package:dsh_chat/src/chat/services/chat_file_actions.dart';
 import 'package:dsh_chat/src/core/models.dart';
 import 'package:dsh_chat/src/core/profile.dart';
 import 'package:dsh_chat/src/core/theme.dart';
+import 'package:dsh_chat/src/core/typography.dart';
 
 final _linkPattern = RegExp('https?://[^\\s<>\'"]+');
 
@@ -591,13 +592,7 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _richText(String text) {
-    const base = TextStyle(
-      color: AppTheme.text,
-      // 14px + 思源黑体 Medium（theme.dart 里只对 Windows 生效）：字号跟 QQ/微信一个量级，
-      // 字本身比雅黑粗一档，小字号也不会发虚。
-      fontSize: 14,
-      height: 1.5,
-    );
+    const base = AppText.body;
     final spans = <InlineSpan>[];
     final buffer = StringBuffer();
 

@@ -7,6 +7,7 @@ import 'package:dsh_chat/src/core/api.dart';
 import 'package:dsh_chat/src/core/models.dart';
 import 'package:dsh_chat/src/core/profile.dart';
 import 'package:dsh_chat/src/core/theme.dart';
+import 'package:dsh_chat/src/core/typography.dart';
 import '../chat/chat_screen.dart';
 import '../settings/profile_dialog.dart';
 import '../settings/settings_screen.dart';
@@ -501,18 +502,12 @@ class _DesktopHomeState extends State<DesktopHome> {
                           conversation.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: AppText.title,
                         ),
                       ),
                       Text(
                         _timeText(conversation.updatedAt),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.muted,
-                        ),
+                        style: AppText.caption,
                       ),
                     ],
                   ),
@@ -526,10 +521,7 @@ class _DesktopHomeState extends State<DesktopHome> {
                               : conversation.preview,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.muted,
-                          ),
+                          style: AppText.meta,
                         ),
                       ),
                       PopupMenuButton<String>(

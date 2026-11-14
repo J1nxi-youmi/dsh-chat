@@ -43,7 +43,7 @@ class Session {
     final text = (raw['text']?.toString() ?? '').trim();
     if (text.isEmpty) return;
     final body = text.length > 80 ? '${text.substring(0, 80)}…' : text;
-    Notifier.show(title: '新消息', body: body);
+    Notifier.show(title: '新消息', body: body, conversationId: conversationId);
   }
 
   static void dispose() {

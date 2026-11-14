@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'src/core/api.dart';
+import 'src/core/app_state.dart';
 import 'src/core/notify.dart';
 import 'src/core/profile.dart';
 import 'src/core/session.dart';
@@ -35,6 +36,12 @@ Future<void> main() async {
   }
   // Windows 的系统通知、Android 的前台服务都在这里初始化。
   await Notifier.setup();
+  // 点通知直接进那条会话：前台时由原生回调把 id 送回来，冷启动时问一次。
+  Notifier.onOpenConversation = (id) => pendingConversationToOpen.value = id;
+  final initialConversation = await Notifier.initialConversation();
+  if (initialConversation != null && initialConversation.isNotEmpty) {
+    pendingConversationToOpen.value = initialConversation;
+  }
   // 先把「我的资料」读出来（昵称 + 自定义头像）。
   await AppProfile.instance.load();
   runApp(const ChatApp());

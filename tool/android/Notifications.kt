@@ -36,14 +36,17 @@ object Notifications {
             Notification.Builder(context)
         }
 
-    fun showMessage(context: Context, title: String, body: String) {
+    fun showMessage(context: Context, title: String, body: String, conversationId: String?) {
         ensureChannels(context)
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            // 点通知直接进这条会话，而不是回列表。
+            if (!conversationId.isNullOrEmpty()) putExtra("dsh_conversation", conversationId)
         }
+        val requestCode = nextMessageId
         val pending = PendingIntent.getActivity(
             context,
-            0,
+            requestCode,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

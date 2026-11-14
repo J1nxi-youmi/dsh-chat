@@ -12,7 +12,19 @@ class Notifier {
   static const _channel = MethodChannel('dsh/chat_service');
   static bool _ready = false;
 
+  /// 点通知要打开哪条会话：Android 原生活动把 id 送回来。
+  static void Function(String conversationId)? onOpenConversation;
+
   static Future<void> setup() async {
+    if (Platform.isAndroid) {
+      _channel.setMethodCallHandler((call) async {
+        if (call.method == 'opened') {
+          final id = call.arguments?.toString() ?? '';
+          if (id.isNotEmpty) onOpenConversation?.call(id);
+        }
+        return null;
+      });
+    }
     if (Platform.isWindows) {
       try {
         await localNotifier.setup(
@@ -34,7 +46,21 @@ class Notifier {
     _ready = true;
   }
 
-  static Future<void> show({required String title, required String body}) async {
+  /// 冷启动时通知带进来的会话 id（只取一次）。
+  static Future<String?> initialConversation() async {
+    if (!Platform.isAndroid) return null;
+    try {
+      return await _channel.invokeMethod<String>('initialConversation');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> show({
+    required String title,
+    required String body,
+    String? conversationId,
+  }) async {
     if (!_ready) return;
     if (Platform.isWindows) {
       try {
@@ -47,7 +73,11 @@ class Notifier {
     }
     if (Platform.isAndroid) {
       try {
-        await _channel.invokeMethod('notify', {'title': title, 'body': body});
+        await _channel.invokeMethod('notify', {
+          'title': title,
+          'body': body,
+          'conversationId': conversationId,
+        });
       } catch (_) {
         /* 用户可能没给通知权限 */
       }

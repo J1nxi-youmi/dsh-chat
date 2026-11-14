@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dsh_chat/src/core/api.dart';
+import 'package:dsh_chat/src/core/app_state.dart';
 import 'package:dsh_chat/src/core/profile.dart';
 import 'package:dsh_chat/src/core/models.dart';
 import 'package:dsh_chat/src/core/theme.dart';
@@ -44,11 +45,36 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     _connected = widget.api.connected.value;
     widget.api.connected.addListener(_onConnection);
     _searchFocus.addListener(_onSearchFocus);
+    pendingConversationToOpen.addListener(_openPendingConversation);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openPendingConversation());
     _load();
   }
 
   void _onSearchFocus() {
     if (mounted) setState(() {});
+  }
+
+  /// 点通知进来：直接把那条会话打开，而不是回到列表。
+  void _openPendingConversation() {
+    final id = pendingConversationToOpen.value;
+    if (id == null || id.isEmpty || !mounted) return;
+    pendingConversationToOpen.value = null;
+    var title = '';
+    for (final item in _items) {
+      if (item.id == id) {
+        title = item.title;
+        break;
+      }
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          api: widget.api,
+          conversationId: id,
+          title: title,
+        ),
+      ),
+    );
   }
 
   void _onConnection() {
@@ -61,6 +87,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   void dispose() {
     widget.api.connected.removeListener(_onConnection);
     _searchFocus.removeListener(_onSearchFocus);
+    pendingConversationToOpen.removeListener(_openPendingConversation);
     _searchFocus.dispose();
     _search.dispose();
     super.dispose();

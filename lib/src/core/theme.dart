@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
 /// 青屿 · 陪伴版：暖白底、鼠尾草绿主色、轻盈留白。

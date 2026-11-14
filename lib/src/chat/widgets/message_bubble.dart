@@ -196,7 +196,7 @@ class MessageBubble extends StatelessWidget {
                       Text(
                         DateFormat('HH:mm').format(message.at),
                         style: const TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 11,
                           color: AppTheme.muted,
                         ),
                       ),
@@ -207,7 +207,7 @@ class MessageBubble extends StatelessWidget {
                           child: Text(
                             status == 'failed' ? '发送失败，点这里重发' : '发送中…',
                             style: TextStyle(
-                              fontSize: 10.5,
+                              fontSize: 11,
                               color: status == 'failed'
                                   ? AppTheme.error
                                   : AppTheme.muted,
@@ -236,8 +236,8 @@ class MessageBubble extends StatelessWidget {
       child: Text(
         transcribing ? '正在转写…' : transcript!,
         style: const TextStyle(
-          fontSize: 12.5,
-          height: 1.45,
+          fontSize: 13,
+          height: 1.5,
           color: AppTheme.text,
         ),
       ),
@@ -485,7 +485,7 @@ class MessageBubble extends StatelessWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontSize: 9.5,
+                                        fontSize: 10,
                                         color: Colors.white,
                                       ),
                                     ),
@@ -622,8 +622,10 @@ class MessageBubble extends StatelessWidget {
       TextSpan(
         style: const TextStyle(
           color: AppTheme.text,
-          fontSize: 15,
-          height: 1.45,
+          // 16 而不是 15：Windows 上只有灰度抗锯齿，15px 的中文一横常常只剩 1 个像素，
+          // 笔画会断、粗细不匀；多这 1 像素，横竖都落得实一些。
+          fontSize: 16,
+          height: 1.5,
         ),
         children: spans,
       ),
@@ -707,7 +709,7 @@ class AttachmentView extends StatelessWidget {
                   attachment.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13.5),
+                  style: const TextStyle(fontSize: 14),
                 ),
                 Text(
                   attachment.sizeText,

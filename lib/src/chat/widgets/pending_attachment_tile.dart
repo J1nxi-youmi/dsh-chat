@@ -150,7 +150,7 @@ class PendingAttachmentTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 10.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.text,
                   ),

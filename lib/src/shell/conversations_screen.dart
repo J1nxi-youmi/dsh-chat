@@ -404,7 +404,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 13.5,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -412,7 +412,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                           Text(
                             _timeText(conversation.updatedAt),
                             style: const TextStyle(
-                              fontSize: 10.5,
+                              fontSize: 11,
                               color: AppTheme.muted,
                             ),
                           ),

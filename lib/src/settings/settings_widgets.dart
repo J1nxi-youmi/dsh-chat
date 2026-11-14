@@ -94,7 +94,7 @@ class SettingsRow extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.text,
                     ),
@@ -105,7 +105,7 @@ class SettingsRow extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 8.5,
+                      fontSize: 9,
                       height: 1.35,
                       color: AppTheme.muted,
                     ),

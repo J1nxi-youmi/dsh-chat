@@ -1534,7 +1534,7 @@ class ChatScreenState extends State<ChatScreen> {
                 const SizedBox(height: 2),
                 Text(
                   _recordCancelled ? '松开取消' : '松开发送 · 上滑取消',
-                  style: const TextStyle(fontSize: 8.5, color: AppTheme.muted),
+                  style: const TextStyle(fontSize: 9, color: AppTheme.muted),
                 ),
               ],
             ),

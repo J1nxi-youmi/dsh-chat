@@ -332,7 +332,7 @@ class _DesktopHomeState extends State<DesktopHome> {
                           Text(
                             '新对话',
                             style: TextStyle(
-                              fontSize: 10.5,
+                              fontSize: 11,
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
                             ),
@@ -502,7 +502,7 @@ class _DesktopHomeState extends State<DesktopHome> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 13.5,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -510,7 +510,7 @@ class _DesktopHomeState extends State<DesktopHome> {
                       Text(
                         _timeText(conversation.updatedAt),
                         style: const TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 11,
                           color: AppTheme.muted,
                         ),
                       ),
@@ -527,7 +527,7 @@ class _DesktopHomeState extends State<DesktopHome> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 12,
                             color: AppTheme.muted,
                           ),
                         ),

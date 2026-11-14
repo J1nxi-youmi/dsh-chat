@@ -294,7 +294,7 @@ class _ProfileDialogState extends State<ProfileDialog> {
                       child: Text(
                         '昵称和头像会同步到你的 DSH，其它设备连接后自动保持一致。',
                         style: TextStyle(
-                          fontSize: 8.5,
+                          fontSize: 9,
                           height: 1.5,
                           color: AppTheme.muted,
                         ),

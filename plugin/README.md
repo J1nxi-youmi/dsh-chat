@@ -15,6 +15,14 @@
   `GET /api/plugin-update` 返回 `{ ok, current, update }`（带 6 小时缓存，查不到就返回 `update: null`）
 - **网页设置页**：左下角 ⚙，系统提示词 / 抓链接 / 气泡 / 上传上限，改完即时生效
 
+## 插件页上的名字和介绍
+
+DSH 的插件页读的是 `locale/zh.json` / `locale/en.json` 里的 `meta.title` 和 `meta.description`；
+图标来自 `exports["./icon"]`（`public/icon.svg`）；没有 `meta.detail` 时，介绍页用这份 README。
+
+**每次发版一起同步**：功能、用法、限制有变化，就顺手改 locale 里的描述和这份 README。
+`pnpm test:metadata` 会检查它们存在、没被 `files` 漏掉、图标真的能识别，以及 CHANGELOG 顶部版本和 `package.json` 一致。
+
 ## 装到 DSH
 
 1. 把这个目录放到 DSH 的插件目录里（或用 DSH 的插件管理工具从本地目录安装）；

@@ -4,6 +4,11 @@
 和 App 的构建号互不影响：改 `plugin/**` 只会触发 `.github/workflows/plugin.yml`，
 出一个 `plugin-v<版本>` 的 Release，不会重新构建 App，也不会动 App 的版本号。
 
+## v0.2.8（2026-11-14）
+
+- 补齐插件在 DSH 插件页上的「门面」：`locale/zh.json`、`locale/en.json` 的标题和描述，图标走 `public/icon.svg`（`exports["./icon"]`），没有 `meta.detail` 时介绍页用 README
+- 新增 `plugin/test/metadata.test.mjs`（`pnpm test:metadata`）：标题/描述不能空，声明了介绍页就必须有文件，图标要真能被识别且 ≤256 KiB，这些文件必须被 `files` 打包进去，CHANGELOG 顶部版本必须等于 package.json
+
 ## v0.2.7（2026-11-14）
 
 - **自己检查有没有新版**：启动时列一次 GitHub 的 `plugin-v*` Release，比自己 `package.json` 的 version 新就在日志里提一行；`GET /api/plugin-update` 也能问，`/healthz` 多了 `pluginVersion`

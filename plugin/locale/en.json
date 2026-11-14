@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Qingyu chat service",
+    "description": "Server side of the Qingyu chat app: a web chat UI plus an HTTP/SSE API, with a built-in bridge that runs each conversation as a DSH session. Open http://<host>:8792 for the web UI, or point the app at this server with its address and token. The plugin checks GitHub for its own updates; DSH must be restarted after replacing plugin files."
+  }
+}

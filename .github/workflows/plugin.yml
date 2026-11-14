@@ -44,6 +44,10 @@ jobs:
         working-directory: plugin
         run: node test/update.test.mjs
 
+      - name: 插件门面（标题 / 描述 / 介绍页 / 图标）
+        working-directory: plugin
+        run: node test/metadata.test.mjs
+
   package:
     needs: test
     runs-on: ubuntu-latest

@@ -1,0 +1,102 @@
+name: plugin
+
+# 插件自己的构建：只动 plugin/ 时跑，和 App 的 build.yml 完全分开。
+# 版本号只认 plugin/package.json 的 version，不占 App 的构建号。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugin/**'
+      - '.github/workflows/plugin.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plugin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # 三个测试都只依赖 node 内置模块，不用先装依赖。
+      - name: 协议可靠性（seq / 幂等 / 重发 / since）
+        working-directory: plugin
+        run: node test/reliability.mjs
+
+      - name: 回合调度（跨会话并行 / 同会话串行）
+        working-directory: plugin
+        run: node test/turns.mjs
+
+      - name: 桥的会话队列
+        working-directory: plugin
+        run: node test/session-queue.test.mjs
+
+  package:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: 读版本
+        id: version
+        working-directory: plugin
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "插件版本 $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # npm pack 按 package.json 的 files 打包（lib / public / server.mjs / 补丁），
+      # 产物是 dsh-plugin-chat-<version>.tgz，解包后放进 DSH 的插件目录即可。
+      - name: 打包
+        working-directory: plugin
+        run: |
+          mkdir -p ../dist
+          npm pack --pack-destination ../dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-plugin-chat-${{ steps.version.outputs.version }}
+          path: dist/*.tgz
+          if-no-files-found: error
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: 发到 plugin-v<版本> 的 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          VERSION: ${{ needs.package.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="plugin-v${VERSION}"
+          cat > NOTES.md <<EOF
+          dsh-plugin-chat v${VERSION}（提交 ${GITHUB_SHA}）
+
+          解包 dsh-plugin-chat-${VERSION}.tgz，把 package/ 里的内容放进 DSH 的插件目录，
+          在 profile 的 cordis.patch.yml 里启用（配置项见 plugin/README.md），改完重启 DSH。
+          EOF
+          gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 \
+            || gh release create "$TAG" --repo "$REPO" --title "插件 v${VERSION}" --notes-file NOTES.md
+          gh release upload "$TAG" dist/*/*.tgz --repo "$REPO" --clobber
+          echo "已发布 $TAG"

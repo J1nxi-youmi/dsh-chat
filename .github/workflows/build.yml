@@ -3,6 +3,12 @@ name: build
 on:
   push:
     branches: [main]
+    # 插件（plugin/）走自己的 plugin.yml：改插件不该顺带重新打包 App，
+    # 更不该把 App 的构建号／版本号顶上去。纯文档改动也不值得出一版。
+    paths-ignore:
+      - 'plugin/**'
+      - '.github/workflows/plugin.yml'
+      - '**/*.md'
   workflow_dispatch:
 
 permissions:

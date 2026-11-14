@@ -109,7 +109,11 @@ export class StarlitBridge {
     /** @type {Map<string, any>} 本插件创建的 agent 句柄 */
     this.handles = new Map();
     this.personaSent = false;
-    this.queue = Promise.resolve();
+    /**
+     * 每个会话键一条链：同一条会话的回合串行，不同会话互不等待。
+     * @type {Map<string, Promise<void>>}
+     */
+    this.queues = new Map();
   }
 
   /** 当前固定的那条会话（给 /healthz 和日志用）。 */
@@ -345,11 +349,18 @@ export class StarlitBridge {
     const key = explicit ? (requested.slice(6) || 'default') : this.sessionKeyFor(request);
     const tools = explicit ? true : this.config.tools;
     const persona = !explicit && this.config.persona === 'starlit';
-    const run = this.queue.then(() => this.runTurn({ ...request, key, tools, persona }));
-    this.queue = run.then(
+    // 按会话各排各的：同一条会话仍串行，不同会话并行。
+    // 以前是一条全局链，新会话会被旧会话堵住，看起来像「开了新会话没反应」。
+    const previous = this.queues.get(key) ?? Promise.resolve();
+    const run = previous.then(() => this.runTurn({ ...request, key, tools, persona }));
+    const settled = run.then(
       () => undefined,
       () => undefined,
     );
+    this.queues.set(key, settled);
+    settled.then(() => {
+      if (this.queues.get(key) === settled) this.queues.delete(key);
+    });
     return run;
   }
 

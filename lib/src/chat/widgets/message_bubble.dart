@@ -236,7 +236,7 @@ class MessageBubble extends StatelessWidget {
       child: Text(
         transcribing ? '正在转写…' : transcript!,
         style: const TextStyle(
-          fontSize: 13,
+          fontSize: 14,
           height: 1.5,
           color: AppTheme.text,
         ),
@@ -622,10 +622,10 @@ class MessageBubble extends StatelessWidget {
       TextSpan(
         style: const TextStyle(
           color: AppTheme.text,
-          // 16 而不是 15：Windows 上只有灰度抗锯齿，15px 的中文一横常常只剩 1 个像素，
-          // 笔画会断、粗细不匀；多这 1 像素，横竖都落得实一些。
-          fontSize: 16,
-          height: 1.5,
+          // 18 而不是 15/16：Windows 上只有灰度抗锯齿，中文的一横要占到 2 个像素才不发虚。
+          // 雅黑的横画大约 0.09em，16px 时只有 1.4px，18px 才够稳。
+          fontSize: 18,
+          height: 1.55,
         ),
         children: spans,
       ),

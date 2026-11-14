@@ -11,6 +11,8 @@
 - **语音转文字**：`POST /api/transcribe` 接受 `{id}` / `{url}` / `{file}`，用 `config.json` 的 `asrCommand` 转写；未配置返回 503，失败返回 502，App 端不会显示假结果
 - **GitHub 下载代理**：`GET /api/proxy?t=<token>&url=<github 链接>`（只放行 GitHub 系域名），App 内更新直连超时自动走这条隧道兜底
 - **上传上限可调**：默认 96MB，`config.json` 的 `maxUploadBytes` 或网页设置页改；`/healthz` 会把上限告诉 App
+- **插件自检**：启动时顺手查一次 GitHub 上的 `plugin-v*` Release，比自己新就在日志里提示一行；
+  `GET /api/plugin-update` 返回 `{ ok, current, update }`（带 6 小时缓存，查不到就返回 `update: null`）
 - **网页设置页**：左下角 ⚙，系统提示词 / 抓链接 / 气泡 / 上传上限，改完即时生效
 
 ## 装到 DSH

@@ -15,6 +15,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createUpdateChecker } from './lib/update.js';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const PUBLIC_DIR = join(HERE, 'public');
@@ -70,6 +71,17 @@ async function loadConfig() {
 }
 
 const config = await loadConfig();
+
+/** 插件自己的版本号：给 /healthz、/api/plugin-update 和更新检查用。 */
+const PLUGIN_VERSION = await readFile(join(HERE, 'package.json'), 'utf8')
+  .then((text) => JSON.parse(text).version ?? '0.0.0')
+  .catch(() => '0.0.0');
+
+/** 顺手查 GitHub 上有没有新版插件；带缓存、失败静默，不挡聊天。 */
+const checkPluginUpdate = createUpdateChecker({
+  current: PLUGIN_VERSION,
+  logger: console,
+});
 if (!config.token) {
   config.token = randomUUID().replace(/-/g, '').slice(0, 24);
   console.log(`[chat] 没配 token，随机生成了一个：${config.token}`);
@@ -559,6 +571,12 @@ async function handleApi(req, res, url) {
     }
   }
 
+  // 插件自己的版本：问一句「有没有新版」。结果有缓存，不会每次都打 GitHub。
+  if (req.method === 'GET' && path === '/api/plugin-update') {
+    const update = await checkPluginUpdate();
+    return json(res, 200, { ok: true, current: PLUGIN_VERSION, update: update ?? null });
+  }
+
   // 「我的资料」：昵称 + 头像，App 各端连上来自动同步。
   if (path === '/api/profile') {
     const profileFile = join(config.dataDir, 'profile.json');
@@ -938,6 +956,7 @@ const server = createServer(async (req, res) => {
         maxUploadBytes: config.maxUploadBytes,
         upstream: config.baseUrl,
         model: config.model,
+        pluginVersion: PLUGIN_VERSION,
         sessionPerConversation: Boolean(config.sessionPerConversation),
         fetchLinks: Boolean(config.fetchLinks),
       });
@@ -961,4 +980,10 @@ server.requestTimeout = 0;
 server.listen(config.port, config.host, () => {
   console.log(`[chat] http://${config.host}:${config.port}  上游 ${config.baseUrl}  模型 ${config.model}`);
   console.log(`[chat] 令牌：${config.token}`);
+  // 顺手查一次插件有没有新版：只记一行日志，查不到就算了。
+  void checkPluginUpdate().then((update) => {
+    if (update) {
+      console.log(`[chat] 插件有新版本 v${update.latest}（当前 v${PLUGIN_VERSION}）：${update.url}`);
+    }
+  });
 });

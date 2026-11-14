@@ -40,6 +40,10 @@ jobs:
         working-directory: plugin
         run: node test/session-queue.test.mjs
 
+      - name: 插件版本检查
+        working-directory: plugin
+        run: node test/update.test.mjs
+
   package:
     needs: test
     runs-on: ubuntu-latest

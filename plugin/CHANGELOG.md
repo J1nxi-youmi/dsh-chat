@@ -4,6 +4,12 @@
 和 App 的构建号互不影响：改 `plugin/**` 只会触发 `.github/workflows/plugin.yml`，
 出一个 `plugin-v<版本>` 的 Release，不会重新构建 App，也不会动 App 的版本号。
 
+## v0.2.7（2026-11-14）
+
+- **自己检查有没有新版**：启动时列一次 GitHub 的 `plugin-v*` Release，比自己 `package.json` 的 version 新就在日志里提一行；`GET /api/plugin-update` 也能问，`/healthz` 多了 `pluginVersion`
+- 检查带 6 小时缓存，网络不通 / 限流 / 超时一律当「没有新版」，不抛错、不挡服务
+- 新增 `plugin/test/update.test.mjs`（`pnpm test:update`）
+
 ## v0.2.6（2026-11-14）
 
 - 插件改成**独立发版**：`.github/workflows/plugin.yml` 只在 `plugin/**` 变动时跑，打 `plugin-v<版本>` 的 Release；App 的 `build.yml` 忽略 `plugin/**`，改插件不再顶 App 的构建号

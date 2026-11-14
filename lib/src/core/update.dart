@@ -121,6 +121,27 @@ class UpdateService {
     return body.body;
   }
 
+  /// 只认「App 的 Release」。
+  ///
+  /// 插件（`plugin/`）也会发 Release，tag 是 `plugin-v0.2.6` 这种，正文是插件说明、
+  /// 附件是 tgz——绝不能把它当成 App 的新版本，否则版本页会显示「最新版本 plugin-v0.2.6」。
+  static bool looksLikeApp(Map<String, dynamic> json) {
+    if (json['draft'] == true || json['prerelease'] == true) return false;
+    final tag = (json['tag_name'] ?? '').toString();
+    if (tag.startsWith('plugin-')) return false;
+    final body = (json['body'] ?? '').toString();
+    // CI 写的 App 版本正文里有 `<!-- build:148 构建 #148 -->`。
+    if (RegExp(r'<!--[^>]*\bbuild:\d+').hasMatch(body)) return true;
+    // 更老的 release 没这个注释，就看有没有 App 的安装包。
+    final assets = (json['assets'] as List?) ?? const [];
+    return assets.whereType<Map<String, dynamic>>().any((item) {
+      final name = (item['name'] ?? '').toString().toLowerCase();
+      return name.endsWith('.apk') ||
+          name.endsWith('setup.exe') ||
+          name.endsWith('windows.zip');
+    });
+  }
+
   /// 拉最新 release（GitHub API）。更新源只接受 github.com/<owner>/<repo>。
   static Future<UpdateInfo> fetchLatest() async {
     final src = await source();
@@ -130,15 +151,41 @@ class UpdateService {
     }
     final owner = match.group(1)!;
     final repo = match.group(2)!.replaceAll(RegExp(r'\.git$'), '');
-    final data = await _readString(
-      'https://api.github.com/repos/$owner/$repo/releases/latest',
-      headers: {
-        'accept': 'application/vnd.github+json',
-        'user-agent': 'dsh-chat',
-      },
+    const headers = {
+      'accept': 'application/vnd.github+json',
+      'user-agent': 'dsh-chat',
+    };
+
+    // 先翻列表挑 App 的那一条：/releases/latest 现在可能指向插件的 Release。
+    Map<String, dynamic>? picked;
+    final listRaw = await _readString(
+      'https://api.github.com/repos/$owner/$repo/releases?per_page=30',
+      headers: headers,
     );
-    if (data == null) throw '查询更新失败';
-    final json = const JsonDecoder().convert(data) as Map<String, dynamic>;
+    if (listRaw != null) {
+      final list = jsonDecode(listRaw);
+      if (list is List) {
+        for (final item in list.whereType<Map<String, dynamic>>()) {
+          if (looksLikeApp(item)) {
+            picked = item;
+            break;
+          }
+        }
+      }
+    }
+    // 列表接口抽风就退回 latest（顺带也过一遍同样的判断）。
+    if (picked == null) {
+      final data = await _readString(
+        'https://api.github.com/repos/$owner/$repo/releases/latest',
+        headers: headers,
+      );
+      if (data == null) throw '查询更新失败';
+      final one = jsonDecode(data);
+      if (one is Map<String, dynamic> && looksLikeApp(one)) picked = one;
+    }
+    if (picked == null) throw '没有找到 App 的 Release（仓库里可能只有插件版本）';
+
+    final json = picked;
     final assets = (json['assets'] as List?) ?? const [];
     String? findAsset(String suffix) {
       for (final item in assets.whereType<Map<String, dynamic>>()) {

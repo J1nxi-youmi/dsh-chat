@@ -97,6 +97,23 @@ jobs:
           在 profile 的 cordis.patch.yml 里启用（配置项见 plugin/README.md），改完重启 DSH。
           EOF
           gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 \
-            || gh release create "$TAG" --repo "$REPO" --title "插件 v${VERSION}" --notes-file NOTES.md
+            || gh release create "$TAG" --repo "$REPO" --prerelease --title "插件 v${VERSION}" --notes-file NOTES.md
           gh release upload "$TAG" dist/*/*.tgz --repo "$REPO" --clobber
-          echo "已发布 $TAG"
+          # 插件版本永远标成「预发布」：GitHub 的 releases/latest 只认正式版，
+          # 不然 App 的「检查更新」会把插件当成自己的新版本。
+          gh release edit "$TAG" --repo "$REPO" --prerelease
+          echo "已发布 $TAG（预发布）"
+
+      - name: 把历史插件 Release 也标成预发布
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPO/releases?per_page=100" \
+            --jq '.[] | select(.tag_name | startswith("plugin-v")) | select(.prerelease == false) | .tag_name' \
+            | while read -r old; do
+                [ -n "$old" ] || continue
+                gh release edit "$old" --repo "$REPO" --prerelease
+                echo "已把 $old 标成预发布"
+              done

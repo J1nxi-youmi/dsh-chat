@@ -591,44 +591,132 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _richText(String text) {
+    const base = TextStyle(
+      color: AppTheme.text,
+      // 14px + 思源黑体 Medium（theme.dart 里只对 Windows 生效）：字号跟 QQ/微信一个量级，
+      // 字本身比雅黑粗一档，小字号也不会发虚。
+      fontSize: 14,
+      height: 1.5,
+    );
     final spans = <InlineSpan>[];
+    final buffer = StringBuffer();
+
+    void flush() {
+      if (buffer.isEmpty) return;
+      spans.add(TextSpan(text: buffer.toString()));
+      buffer.clear();
+    }
+
     var index = 0;
-    for (final match in _linkPattern.allMatches(text)) {
-      if (match.start > index) {
-        spans.add(TextSpan(text: text.substring(index, match.start)));
-      }
-      final link = match.group(0)!;
-      spans.add(
-        TextSpan(
-          text: link,
-          style: const TextStyle(
-            color: AppTheme.accent,
-            decoration: TextDecoration.underline,
-            decorationColor: AppTheme.accent2,
-          ),
-          recognizer: TapGestureRecognizer()
-            ..onTap = () => launchUrl(
-              Uri.parse(link),
-              mode: LaunchMode.externalApplication,
+    while (index < text.length) {
+      final rest = text.substring(index);
+
+      // `行内代码`
+      if (rest.startsWith('`')) {
+        final end = text.indexOf('`', index + 1);
+        if (end > index + 1) {
+          flush();
+          spans.add(
+            TextSpan(
+              text: text.substring(index + 1, end),
+              style: const TextStyle(
+                backgroundColor: Color(0xFFEBEEE8),
+                color: Color(0xFF33403A),
+              ),
             ),
-        ),
-      );
-      index = match.end;
+          );
+          index = end + 1;
+          continue;
+        }
+      }
+
+      // **粗体**
+      if (rest.startsWith('**')) {
+        final end = text.indexOf('**', index + 2);
+        if (end > index + 2) {
+          flush();
+          spans.add(
+            TextSpan(
+              text: text.substring(index + 2, end),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          );
+          index = end + 2;
+          continue;
+        }
+      }
+
+      // *斜体* / _斜体_（不跨行）
+      if (rest.startsWith('*') || rest.startsWith('_')) {
+        final mark = rest[0];
+        final end = text.indexOf(mark, index + 1);
+        if (end > index + 1) {
+          final inner = text.substring(index + 1, end);
+          if (!inner.contains('\n')) {
+            flush();
+            spans.add(
+              TextSpan(
+                text: inner,
+                style: const TextStyle(fontStyle: FontStyle.italic),
+              ),
+            );
+            index = end + 1;
+            continue;
+          }
+        }
+      }
+
+      // [文字](链接)
+      if (rest.startsWith('[')) {
+        final close = text.indexOf('](', index + 1);
+        if (close > index) {
+          final end = text.indexOf(')', close + 2);
+          if (end > close) {
+            flush();
+            spans.add(
+              _linkSpan(
+                text.substring(index + 1, close),
+                text.substring(close + 2, end),
+              ),
+            );
+            index = end + 1;
+            continue;
+          }
+        }
+      }
+
+      // 裸链接
+      final match = _linkPattern.matchAsPrefix(text, index);
+      if (match != null) {
+        flush();
+        final url = match.group(0)!;
+        spans.add(_linkSpan(url, url));
+        index = match.end;
+        continue;
+      }
+
+      buffer.write(text[index]);
+      index += 1;
     }
-    if (index < text.length) {
-      spans.add(TextSpan(text: text.substring(index)));
-    }
-    return Text.rich(
-      TextSpan(
-        style: const TextStyle(
-          color: AppTheme.text,
-          // 14px + 思源黑体 Medium（theme.dart 里只对 Windows 生效）：字号跟 QQ/微信一个量级，
-          // 字本身比雅黑粗一档，小字号也不会发虚。
-          fontSize: 14,
-          height: 1.5,
-        ),
-        children: spans,
+    flush();
+
+    return Text.rich(TextSpan(style: base, children: spans));
+  }
+
+  /// 链接：点开系统浏览器。
+  InlineSpan _linkSpan(String label, String url) {
+    return TextSpan(
+      text: label,
+      style: const TextStyle(
+        color: AppTheme.accent,
+        decoration: TextDecoration.underline,
+        decorationColor: AppTheme.accent2,
       ),
+      recognizer: TapGestureRecognizer()
+        ..onTap = () => launchUrl(
+          Uri.parse(url),
+          mode: LaunchMode.externalApplication,
+        ),
     );
   }
 }

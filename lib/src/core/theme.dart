@@ -46,7 +46,13 @@ class AppTheme {
 
   static ThemeData light() {
     final base = ThemeData.light(useMaterial3: true);
-    return base.copyWith(
+    // Windows 上 Flutter 只有灰度抗锯齿：96 DPI 下雅黑一个横画只有 1.4 个像素，
+    // 细笔画会被摊成灰色，看起来又窄又虚。这里只给 Windows 换思源黑体 Medium
+    // （pubspec 里声明成 NotoSansSC）；手机屏幕像素密度够，继续用系统字体。
+    final desktopFont = defaultTargetPlatform == TargetPlatform.windows
+        ? 'NotoSansSC'
+        : null;
+    final theme = base.copyWith(
       scaffoldBackgroundColor: bg,
       colorScheme: base.colorScheme.copyWith(
         primary: accent,
@@ -115,6 +121,10 @@ class AppTheme {
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
         ),
       ),
+    );
+    if (desktopFont == null) return theme;
+    return theme.copyWith(
+      textTheme: theme.textTheme.apply(fontFamily: desktopFont),
     );
   }
 }

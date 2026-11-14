@@ -45,4 +45,12 @@ flutter:
   uses-material-design: true
   assets:
     - assets/avatar.png
+  fonts:
+    # 只在 Windows 上用：Flutter 在 Windows 下只有灰度抗锯齿，系统雅黑的笔画太细，
+    # 96 DPI 下一个横画只有 1.4 个像素。换成思源黑体（Noto Sans SC）Medium，
+    # 笔画粗一档，小字号才不发虚。Android 的像素密度够，保持系统字体不动。
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Medium.otf
+          weight: 400
 

@@ -622,10 +622,10 @@ class MessageBubble extends StatelessWidget {
       TextSpan(
         style: const TextStyle(
           color: AppTheme.text,
-          // 18 而不是 15/16：Windows 上只有灰度抗锯齿，中文的一横要占到 2 个像素才不发虚。
-          // 雅黑的横画大约 0.09em，16px 时只有 1.4px，18px 才够稳。
-          fontSize: 18,
-          height: 1.55,
+          // Windows 上用思源黑体 Medium（theme.dart 里只对 Windows 生效），
+          // 字本身比雅黑粗一档，17px 就够清楚；再大就不像聊天软件了。
+          fontSize: 17,
+          height: 1.5,
         ),
         children: spans,
       ),

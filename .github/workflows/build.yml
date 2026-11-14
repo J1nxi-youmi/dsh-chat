@@ -7,7 +7,8 @@ on:
     # 更不该把 App 的构建号／版本号顶上去。纯文档改动也不值得出一版。
     paths-ignore:
       - 'plugin/**'
-      - '.github/workflows/plugin.yml'
+      # 改 CI 本身不用重新出一版 App；需要时手动 workflow_dispatch。
+      - '.github/workflows/**'
       - '**/*.md'
   workflow_dispatch:
 
